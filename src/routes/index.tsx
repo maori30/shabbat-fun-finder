@@ -150,6 +150,7 @@ function Index() {
 
   const results = useMemo(() => {
     const list = ATTRACTIONS.filter((a) => {
+      if (showFavOnly && !favorites.includes(a.id)) return false;
       if (shabbatOnly && !a.openShabbat) return false;
       if (env !== "all" && a.environment !== env) return false;
       if (region !== "all" && a.region !== region) return false;
@@ -170,7 +171,7 @@ function Index() {
         .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
     }
     return list;
-  }, [query, shabbatOnly, age, env, region, origin, radius]);
+  }, [query, shabbatOnly, age, env, region, origin, radius, showFavOnly, favorites]);
 
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
@@ -226,15 +227,26 @@ function Index() {
             </div>
           </div>
 
-          <label className="mt-3 flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={shabbatOnly}
-              onChange={(e) => setShabbatOnly(e.target.checked)}
-              className="h-5 w-5 accent-primary"
-            />
-            הצג רק אטרקציות פתוחות בשבת
-          </label>
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={shabbatOnly}
+                onChange={(e) => setShabbatOnly(e.target.checked)}
+                className="h-5 w-5 accent-primary"
+              />
+              הצג רק אטרקציות פתוחות בשבת
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showFavOnly}
+                onChange={(e) => setShowFavOnly(e.target.checked)}
+                className="h-5 w-5 accent-primary"
+              />
+              ❤️ רק מועדפים ({favorites.length})
+            </label>
+          </div>
 
           <div className="mt-4 rounded-xl border bg-background/60 p-3">
             <div className="text-sm font-semibold mb-2">🔎 חיפוש לפי קרבה אליי</div>
@@ -261,7 +273,7 @@ function Index() {
                 <input
                   type="range"
                   min={5}
-                  max={200}
+                  max={500}
                   step={5}
                   value={radius}
                   onChange={(e) => setRadius(Number(e.target.value))}
@@ -303,15 +315,24 @@ function Index() {
                     {a.city} · {a.category}
                   </div>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    a.openShabbat
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-rose-100 text-rose-800"
-                  }`}
-                >
-                  {a.openShabbat ? "פתוח בשבת" : "סגור בשבת"}
-                </span>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <button
+                    onClick={() => toggleFav(a.id)}
+                    aria-label="הוסף למועדפים"
+                    className="text-2xl leading-none hover:scale-110 transition-transform"
+                  >
+                    {favorites.includes(a.id) ? "❤️" : "🤍"}
+                  </button>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      a.openShabbat
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-rose-100 text-rose-800"
+                    }`}
+                  >
+                    {a.openShabbat ? "פתוח בשבת" : "סגור בשבת"}
+                  </span>
+                </div>
               </div>
               <p className="mt-2 text-sm">{a.description}</p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
