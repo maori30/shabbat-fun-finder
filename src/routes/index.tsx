@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -96,6 +96,23 @@ function Index() {
   const [radius, setRadius] = useState<number>(30);
   const [origin, setOrigin] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [geoStatus, setGeoStatus] = useState<string>("");
+  const [favorites, setFavorites] = useState<number[]>([]);
+  const [showFavOnly, setShowFavOnly] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kids_favorites");
+      if (raw) setFavorites(JSON.parse(raw));
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("kids_favorites", JSON.stringify(favorites));
+    } catch {}
+  }, [favorites]);
+
+  const toggleFav = (id: number) =>
+    setFavorites((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
 
   const cityNames = useMemo(() => Object.keys(CITY_COORDS), []);
 
