@@ -28,9 +28,48 @@ export type PlaceResult = {
   mapsUri: string;
   websiteUri: string | null;
   primaryType: string | null;
+  primaryTypeId: string | null;
+  types: string[];
   openNow: boolean | null;
   openShabbat: boolean | null;
+  environment: "ממוזג" | "פתוח" | "משולב" | null;
+  ageRange: { min: number; max: number } | null;
 };
+
+const INDOOR_TYPES = new Set([
+  "shopping_mall", "movie_theater", "aquarium", "museum", "bowling_alley",
+  "amusement_center", "art_gallery", "library", "restaurant", "cafe",
+]);
+const OUTDOOR_TYPES = new Set([
+  "park", "national_park", "playground", "zoo", "amusement_park",
+  "tourist_attraction", "campground", "beach",
+]);
+const MIXED_TYPES = new Set(["water_park"]);
+
+function inferEnvironment(types: string[], name: string): PlaceResult["environment"] {
+  for (const t of types) {
+    if (INDOOR_TYPES.has(t)) return "ממוזג";
+    if (MIXED_TYPES.has(t)) return "משולב";
+    if (OUTDOOR_TYPES.has(t)) return "פתוח";
+  }
+  if (/משחקייה|פעלטון|קניון|קולנוע|באולינג/.test(name)) return "ממוזג";
+  if (/פארק|גן|חוף|טיילת/.test(name)) return "פתוח";
+  return null;
+}
+
+function inferAgeRange(types: string[], name: string): PlaceResult["ageRange"] {
+  if (/משחקייה|פעלטון|ג'ימבורי|קידילנד/.test(name)) return { min: 1, max: 10 };
+  if (types.includes("playground")) return { min: 1, max: 10 };
+  if (types.includes("water_park")) return { min: 3, max: 16 };
+  if (types.includes("amusement_park")) return { min: 3, max: 16 };
+  if (types.includes("zoo") || types.includes("aquarium")) return { min: 2, max: 14 };
+  if (types.includes("movie_theater")) return { min: 4, max: 16 };
+  if (types.includes("bowling_alley")) return { min: 6, max: 16 };
+  if (types.includes("museum")) return { min: 4, max: 16 };
+  if (types.includes("tourist_attraction") || types.includes("park")) return { min: 0, max: 16 };
+  if (types.includes("shopping_mall")) return { min: 0, max: 16 };
+  return null;
+}
 
 export const searchPlaces = createServerFn({ method: "POST" })
   .inputValidator((data: { lat: number; lng: number; radius: number; keyword?: string }) => {
