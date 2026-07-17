@@ -27,6 +27,7 @@ type Attraction = {
   emoji: string;
   lat: number;
   lng: number;
+  url?: string;
 };
 
 const ATTRACTIONS: Attraction[] = [
