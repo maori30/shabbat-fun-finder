@@ -194,6 +194,41 @@ function Index() {
   const [geoStatus, setGeoStatus] = useState<string>("");
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showFavOnly, setShowFavOnly] = useState(false);
+  const [googleResults, setGoogleResults] = useState<PlaceResult[] | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState<string>("");
+  const searchPlacesFn = useServerFn(searchPlaces);
+
+  const runGoogleSearch = async () => {
+    if (!origin) {
+      setGoogleError("בחרו קודם עיר או השתמשו במיקום שלכם");
+      return;
+    }
+    setGoogleLoading(true);
+    setGoogleError("");
+    try {
+      const res = await searchPlacesFn({
+        data: {
+          lat: origin.lat,
+          lng: origin.lng,
+          radius: Math.min(radius, 50) * 1000,
+          keyword: query.trim(),
+        },
+      });
+      if (res.error) setGoogleError(res.error);
+      setGoogleResults(res.places);
+    } catch (e) {
+      setGoogleError("שגיאה בחיפוש");
+      console.error(e);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const clearGoogle = () => {
+    setGoogleResults(null);
+    setGoogleError("");
+  };
 
   useEffect(() => {
     try {
