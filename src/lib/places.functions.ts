@@ -14,7 +14,6 @@ const KIDS_TYPES = [
   "shopping_mall",
   "movie_theater",
   "bowling_alley",
-  "children_camp",
   "playground",
 ];
 
