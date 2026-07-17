@@ -500,11 +500,22 @@ function Index() {
                         </span>
                       )}
                       {p.openNow !== null && (
-                        <span className={`rounded-full px-2.5 py-1 font-semibold ${p.openNow ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-700"}`}>
-                          {p.openNow ? "פתוח עכשיו" : "סגור עכשיו"}
+                        <span className={`rounded-full px-2.5 py-1 font-semibold ${p.openNow ? "bg-emerald-100 text-emerald-800" : "bg-gray-200 text-gray-700"}`}>
+                          {p.openNow ? "🟢 פתוח עכשיו" : "⚫ סגור עכשיו"}
+                        </span>
+                      )}
+                      {p.environment && (
+                        <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground font-semibold">
+                          {p.environment === "ממוזג" ? "❄️ ממוזג" : p.environment === "פתוח" ? "☀️ פתוח" : "🔀 משולב"}
+                        </span>
+                      )}
+                      {p.ageRange && (
+                        <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground font-semibold">
+                          👶 גילאי {p.ageRange.min}–{p.ageRange.max}
                         </span>
                       )}
                     </div>
+
                     <div className="mt-3 flex flex-wrap gap-2 text-xs">
                       <a
                         href={p.mapsUri}
