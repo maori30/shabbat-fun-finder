@@ -255,7 +255,7 @@ function Index() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="חיפוש לפי שם, עיר או קטגוריה"
+              placeholder="חיפוש לפי שם או קטגוריה"
               className="w-full rounded-xl border bg-background px-4 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
             />
             <div className="flex gap-2">
