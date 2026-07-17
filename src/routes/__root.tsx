@@ -80,6 +80,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "כיף לילדים - אטרקציות בשבת" },
       { name: "description", content: "מצאו אטרקציות לילדים הפתוחות בשבת, עם סינון לפי גיל, מיזוג, מיקום וקרבה אליכם." },
       { name: "author", content: "Lovable" },
+      { name: "google-site-verification", content: "0rTRE7uREDwohKsY-WFQgHqerpWiYRBV81mX1gdbHH8" },
       { property: "og:title", content: "כיף לילדים - אטרקציות בשבת" },
       { property: "og:description", content: "מצאו אטרקציות לילדים הפתוחות בשבת, עם סינון לפי גיל, מיזוג, מיקום וקרבה אליכם." },
       { property: "og:type", content: "website" },
