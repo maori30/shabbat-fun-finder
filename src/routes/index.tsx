@@ -431,6 +431,29 @@ function Index() {
                     📏 {a.distance.toFixed(1)} ק"מ
                   </span>
                 )}
+                {a.distance !== null && (
+                  <span className="rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 font-semibold">
+                    🚗 ~{Math.max(1, Math.round((a.distance / 60) * 60))} דק'
+                  </span>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                <a
+                  href={`https://waze.com/ul?ll=${a.lat},${a.lng}&navigate=yes`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-xl bg-sky-600 text-white px-3 py-1.5 font-semibold hover:opacity-90"
+                >
+                  🧭 נווט בוויז
+                </a>
+                <a
+                  href={a.url ?? `https://www.google.com/search?q=${encodeURIComponent(a.name + " " + a.city)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-xl border px-3 py-1.5 font-semibold hover:bg-secondary"
+                >
+                  🔗 {a.url ? "לאתר" : "חיפוש בגוגל"}
+                </a>
               </div>
             </article>
           ))}
