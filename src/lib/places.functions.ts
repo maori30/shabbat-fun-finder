@@ -126,7 +126,9 @@ export const searchPlaces = createServerFn({ method: "POST" })
       "places.userRatingCount",
       "places.googleMapsUri",
       "places.websiteUri",
+      "places.primaryType",
       "places.primaryTypeDisplayName",
+      "places.types",
       "places.currentOpeningHours.openNow",
       "places.regularOpeningHours.weekdayDescriptions",
     ].join(",");
@@ -158,22 +160,26 @@ export const searchPlaces = createServerFn({ method: "POST" })
         userRatingCount?: number;
         googleMapsUri?: string;
         websiteUri?: string;
+        primaryType?: string;
         primaryTypeDisplayName?: { text?: string };
+        types?: string[];
         currentOpeningHours?: { openNow?: boolean };
         regularOpeningHours?: { weekdayDescriptions?: string[] };
       }>;
     };
 
     const places: PlaceResult[] = (json.places ?? []).map((p) => {
-      // Saturday is index 5 in weekdayDescriptions (Google returns Mon-Sun in he locale)
       const weekly = p.regularOpeningHours?.weekdayDescriptions ?? [];
       const satLine = weekly.find((d) => d.startsWith("שבת"));
       let openShabbat: boolean | null = null;
       if (satLine) openShabbat = !/סגור/.test(satLine);
 
+      const name = p.displayName?.text ?? "ללא שם";
+      const types = p.types ?? (p.primaryType ? [p.primaryType] : []);
+
       return {
         id: p.id,
-        name: p.displayName?.text ?? "ללא שם",
+        name,
         address: p.formattedAddress ?? "",
         lat: p.location?.latitude ?? 0,
         lng: p.location?.longitude ?? 0,
@@ -182,8 +188,12 @@ export const searchPlaces = createServerFn({ method: "POST" })
         mapsUri: p.googleMapsUri ?? `https://www.google.com/maps/place/?q=place_id:${p.id}`,
         websiteUri: p.websiteUri ?? null,
         primaryType: p.primaryTypeDisplayName?.text ?? null,
+        primaryTypeId: p.primaryType ?? null,
+        types,
         openNow: p.currentOpeningHours?.openNow ?? null,
         openShabbat,
+        environment: inferEnvironment(types, name),
+        ageRange: inferAgeRange(types, name),
       };
     });
 
