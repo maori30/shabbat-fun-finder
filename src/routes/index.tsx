@@ -222,7 +222,7 @@ function Index() {
       if (age !== "" && (age < a.minAge || age > a.maxAge)) return false;
       if (query.trim()) {
         const q = query.trim();
-        if (!(a.name.includes(q) || a.city.includes(q) || a.category.includes(q))) return false;
+        if (!(a.name.includes(q) || a.category.includes(q))) return false;
       }
       return true;
     }).map((a) => ({
