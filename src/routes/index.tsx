@@ -628,6 +628,9 @@ function Index() {
             לא נמצאו אטרקציות מתאימות. נסו לשנות את הסינון או להגדיל את הרדיוס.
           </div>
         )}
+        </>
+        )}
+
 
         <footer className="mt-10 pb-6 text-center text-xs text-muted-foreground">
           המידע הוא לצורך התרשמות בלבד. מומלץ לוודא שעות פתיחה מול האתר הרשמי.
