@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
+import { searchPlaces, type PlaceResult } from "@/lib/places.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -192,6 +194,41 @@ function Index() {
   const [geoStatus, setGeoStatus] = useState<string>("");
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showFavOnly, setShowFavOnly] = useState(false);
+  const [googleResults, setGoogleResults] = useState<PlaceResult[] | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState<string>("");
+  const searchPlacesFn = useServerFn(searchPlaces);
+
+  const runGoogleSearch = async () => {
+    if (!origin) {
+      setGoogleError("בחרו קודם עיר או השתמשו במיקום שלכם");
+      return;
+    }
+    setGoogleLoading(true);
+    setGoogleError("");
+    try {
+      const res = await searchPlacesFn({
+        data: {
+          lat: origin.lat,
+          lng: origin.lng,
+          radius: Math.min(radius, 50) * 1000,
+          keyword: query.trim(),
+        },
+      });
+      if (res.error) setGoogleError(res.error);
+      setGoogleResults(res.places);
+    } catch (e) {
+      setGoogleError("שגיאה בחיפוש");
+      console.error(e);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const clearGoogle = () => {
+    setGoogleResults(null);
+    setGoogleError("");
+  };
 
   useEffect(() => {
     try {
@@ -392,8 +429,122 @@ function Index() {
               <div className="mt-2 text-xs text-rose-700">{geoStatus}</div>
             )}
           </div>
+
+          {origin && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                onClick={runGoogleSearch}
+                disabled={googleLoading}
+                className="rounded-xl bg-emerald-600 text-white px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+              >
+                {googleLoading ? "מחפש..." : "🌍 חפש מקומות אמיתיים מ-Google"}
+              </button>
+              {googleResults && (
+                <button
+                  onClick={clearGoogle}
+                  className="rounded-xl border px-3 py-2 text-sm hover:bg-secondary"
+                >
+                  חזור לרשימה שלנו
+                </button>
+              )}
+              <span className="text-xs text-muted-foreground">
+                עד {Math.min(radius, 50)} ק"מ · מקסימום 20 תוצאות
+              </span>
+            </div>
+          )}
+          {googleError && (
+            <div className="mt-2 text-xs text-rose-700">{googleError}</div>
+          )}
         </section>
 
+        {googleResults ? (
+          <>
+            <div className="mt-4 text-sm text-muted-foreground">
+              🌍 תוצאות מ-Google Maps: {googleResults.length}
+            </div>
+            <section className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {googleResults.map((p) => {
+                const dist = origin ? distanceKm(origin, { lat: p.lat, lng: p.lng }) : null;
+                return (
+                  <article key={p.id} className="rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-3xl">📍</div>
+                        <h2 className="mt-1 text-lg font-bold">{p.name}</h2>
+                        <div className="text-sm text-muted-foreground">
+                          {p.primaryType ?? "מקום"} {p.rating ? `· ⭐ ${p.rating} (${p.userRatingCount ?? 0})` : ""}
+                        </div>
+                      </div>
+                      {p.openShabbat !== null && (
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold shrink-0 ${
+                            p.openShabbat
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-rose-100 text-rose-800"
+                          }`}
+                        >
+                          {p.openShabbat ? "פתוח בשבת" : "סגור בשבת"}
+                        </span>
+                      )}
+                    </div>
+                    {p.address && <p className="mt-2 text-sm text-muted-foreground">{p.address}</p>}
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      {dist !== null && (
+                        <span className="rounded-full bg-primary/10 text-primary px-2.5 py-1 font-semibold">
+                          📏 {dist.toFixed(1)} ק"מ
+                        </span>
+                      )}
+                      {dist !== null && (
+                        <span className="rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 font-semibold">
+                          🚗 ~{Math.max(1, Math.round(dist))} דק'
+                        </span>
+                      )}
+                      {p.openNow !== null && (
+                        <span className={`rounded-full px-2.5 py-1 font-semibold ${p.openNow ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-700"}`}>
+                          {p.openNow ? "פתוח עכשיו" : "סגור עכשיו"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <a
+                        href={p.mapsUri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-xl bg-blue-600 text-white px-3 py-1.5 font-semibold hover:opacity-90"
+                      >
+                        🗺️ פתח ב-Google Maps
+                      </a>
+                      <a
+                        href={`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-xl bg-sky-600 text-white px-3 py-1.5 font-semibold hover:opacity-90"
+                      >
+                        🧭 וויז
+                      </a>
+                      {p.websiteUri && (
+                        <a
+                          href={p.websiteUri}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-xl border px-3 py-1.5 font-semibold hover:bg-secondary"
+                        >
+                          🔗 אתר
+                        </a>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+            {googleResults.length === 0 && !googleLoading && (
+              <div className="mt-8 rounded-2xl border bg-card p-8 text-center text-muted-foreground">
+                לא נמצאו תוצאות ב-Google. נסו לשנות את החיפוש או הרדיוס.
+              </div>
+            )}
+          </>
+        ) : (
+        <>
         <div className="mt-4 text-sm text-muted-foreground">
           נמצאו {results.length} אטרקציות
         </div>
@@ -477,6 +628,9 @@ function Index() {
             לא נמצאו אטרקציות מתאימות. נסו לשנות את הסינון או להגדיל את הרדיוס.
           </div>
         )}
+        </>
+        )}
+
 
         <footer className="mt-10 pb-6 text-center text-xs text-muted-foreground">
           המידע הוא לצורך התרשמות בלבד. מומלץ לוודא שעות פתיחה מול האתר הרשמי.
