@@ -122,6 +122,8 @@ const ATTRACTIONS: Attraction[] = [
   { id: 78, name: "טיילת נתניה", city: "נתניה", region: "מרכז", category: "טיילת", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "טיילת חוף עם רכבל, מזרקות ומתקנים.", emoji: "🚡", lat: 32.3300, lng: 34.8500 },
   { id: 79, name: "טיילת חוף אשדוד (לידו)", city: "אשדוד", region: "דרום", category: "טיילת", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "טיילת חוף עם מתקני משחק.", emoji: "🏖️", lat: 31.7930, lng: 34.6350 },
   { id: 80, name: "רכבל חיפה - סטלה מאריס", city: "חיפה", region: "צפון", category: "טיילת", openShabbat: true, environment: "משולב", minAge: 2, maxAge: 16, description: "רכבל מהחוף לראש הכרמל.", emoji: "🚠", lat: 32.8280, lng: 34.9700 },
+  { id: 81, name: "הברדקיה", city: "פתח תקווה", region: "מרכז", category: "משחקייה", openShabbat: true, environment: "ממוזג", minAge: 0, maxAge: 6, description: "משחקייה התפתחותית לפעוטות, עם טרמפולינות, בריכת ספוגים, מתחם אתגרי, חוגים וסדנאות.", emoji: "🧸", lat: 32.0914, lng: 34.8858, url: "https://abardakiya.com/", price: "מחיר: בדקו באתר" },
+  { id: 82, name: "פעלטון עופר הקניון הגדול פתח תקווה", city: "פתח תקווה", region: "מרכז", category: "משחקייה", openShabbat: true, environment: "ממוזג", minAge: 0, maxAge: 11, description: "משחקייה בקניון הגדול עם ג'ימבורי, בריכות כדורים, טרמפולינות ומתקנים לילדים.", emoji: "🎠", lat: 32.0898, lng: 34.8844, url: "https://play.pealton.co.il/playgrounds/playgrounds-center/?ContentID=55701", price: "מחיר: בדקו באתר" },
 ];
 
 // Known city centers for "search near city" without geolocation
@@ -261,7 +263,16 @@ function Index() {
         },
       });
       if (res.error) setGoogleError(res.error);
-      setGoogleResults(res.places);
+      const sortedByDistance = [...res.places].sort((a, b) => {
+        const distanceA = distanceKm(origin, { lat: a.lat, lng: a.lng });
+        const distanceB = distanceKm(origin, { lat: b.lat, lng: b.lng });
+        const delta = distanceA - distanceB;
+        if (Math.abs(delta) > 0.05) return delta;
+        const cityA = a.address.split(",").at(-1)?.trim() ?? "";
+        const cityB = b.address.split(",").at(-1)?.trim() ?? "";
+        return cityA.localeCompare(cityB, "he") || a.name.localeCompare(b.name, "he");
+      });
+      setGoogleResults(sortedByDistance);
     } catch (e) {
       setGoogleError("שגיאה בחיפוש");
       console.error(e);
@@ -623,7 +634,7 @@ function Index() {
         {googleResults ? (
           <>
             <div className="mt-4 text-sm text-muted-foreground">
-              🌍 תוצאות מ-Google Maps: {googleResults.length}
+              🌍 תוצאות מ-Google Maps: {googleResults.length} · מסודר מהקרוב לרחוק
             </div>
             <section className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {googleResults.map((p) => {

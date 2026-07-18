@@ -87,6 +87,14 @@ const OUTDOOR_TYPES = new Set([
 ]);
 const MIXED_TYPES = new Set(["water_park"]);
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function inferEnvironment(types: string[], name: string): PlaceResult["environment"] {
   for (const t of types) {
     if (INDOOR_TYPES.has(t)) return "ממוזג";
@@ -471,22 +479,16 @@ export const searchPlaces = createServerFn({ method: "POST" })
 
     // Sort by rating*log(count), with a boost for attraction types/hidden hints
     // in activity mode, and a penalty (not removal) for soft-demoted mall/hotel entries.
+    // Always order from the selected origin outward. City/address is only a
+    // deterministic tie-breaker for places at essentially the same distance.
     finalPlaces.sort((a, b) => {
-      const boostA =
-        data.activityMode &&
-        (a.types.some((t) => ATTRACTION_BOOST.has(t)) || HIDDEN_ATTRACTION_NAME_HINT.test(a.name))
-          ? 1.6
-          : 1;
-      const boostB =
-        data.activityMode &&
-        (b.types.some((t) => ATTRACTION_BOOST.has(t)) || HIDDEN_ATTRACTION_NAME_HINT.test(b.name))
-          ? 1.6
-          : 1;
-      const demoteA = (a as any).isSoftDemoted ? 0.5 : 1;
-      const demoteB = (b as any).isSoftDemoted ? 0.5 : 1;
-      const sa = boostA * demoteA * (a.rating ?? 0) * Math.log10((a.userRatingCount ?? 0) + 10);
-      const sb = boostB * demoteB * (b.rating ?? 0) * Math.log10((b.userRatingCount ?? 0) + 10);
-      return sb - sa;
+      const distanceA = haversineKm(data.lat, data.lng, a.lat, a.lng);
+      const distanceB = haversineKm(data.lat, data.lng, b.lat, b.lng);
+      const distanceDelta = distanceA - distanceB;
+      if (Math.abs(distanceDelta) > 0.05) return distanceDelta;
+      const cityDelta = a.address.localeCompare(b.address, "he");
+      if (cityDelta !== 0) return cityDelta;
+      return a.name.localeCompare(b.name, "he");
     });
 
     return { places: finalPlaces.slice(0, 60) };
