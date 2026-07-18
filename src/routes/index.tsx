@@ -214,6 +214,7 @@ function Index() {
           lng: origin.lng,
           radius: Math.min(radius, 50) * 1000,
           keyword: query.trim(),
+          activityMode,
         },
       });
       if (res.error) setGoogleError(res.error);
