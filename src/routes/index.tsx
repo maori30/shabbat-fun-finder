@@ -449,6 +449,15 @@ function Index() {
                   חזור לרשימה שלנו
                 </button>
               )}
+              <label className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer hover:bg-secondary">
+                <input
+                  type="checkbox"
+                  checked={activityMode}
+                  onChange={(e) => setActivityMode(e.target.checked)}
+                  className="accent-emerald-600"
+                />
+                <span>🎡 מצב פעילות (אטרקציות בלבד — בלי מסעדות/קניונים)</span>
+              </label>
               <span className="text-xs text-muted-foreground">
                 עד {Math.min(radius, 50)} ק"מ · מקסימום 20 תוצאות
               </span>
