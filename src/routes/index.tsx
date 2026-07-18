@@ -202,6 +202,7 @@ function Index() {
   const geocodeCityFn = useServerFn(geocodeCity);
   const [freeCityInput, setFreeCityInput] = useState<string>("");
   const [cityLookupStatus, setCityLookupStatus] = useState<string>("");
+  const [lastCitySearch, setLastCitySearch] = useState<{ cityName: string; result: { lat: number; lng: number; label: string } } | null>(null);
 
   const searchAnyCity = async (cityInput: string) => {
     const trimmed = cityInput.trim();
@@ -214,6 +215,12 @@ function Index() {
         setNearCity("");
         setGeoStatus("");
         setCityLookupStatus("");
+        setFreeCityInput(trimmed);
+        const saved = { cityName: trimmed, result };
+        setLastCitySearch(saved);
+        try {
+          localStorage.setItem("kids_last_city_search", JSON.stringify(saved));
+        } catch {}
       } else {
         setCityLookupStatus("לא נמצאה עיר כזו, נסו שם מלא יותר");
       }
@@ -260,6 +267,17 @@ function Index() {
       const raw = localStorage.getItem("kids_favorites");
       if (raw) setFavorites(JSON.parse(raw));
     } catch {}
+    try {
+      const rawCity = localStorage.getItem("kids_last_city_search");
+      if (rawCity) {
+        const saved = JSON.parse(rawCity) as { cityName: string; result: { lat: number; lng: number; label: string } };
+        if (saved?.result?.lat && saved?.result?.lng) {
+          setLastCitySearch(saved);
+          setFreeCityInput(saved.cityName);
+          setOrigin(saved.result);
+        }
+      }
+    } catch {}
   }, []);
   useEffect(() => {
     try {
@@ -292,7 +310,14 @@ function Index() {
   const pickCity = (city: string) => {
     setNearCity(city);
     if (city && CITY_COORDS[city]) {
-      setOrigin({ ...CITY_COORDS[city], label: city });
+      const result = { ...CITY_COORDS[city], label: city };
+      setOrigin(result);
+      setFreeCityInput("");
+      const saved = { cityName: city, result };
+      setLastCitySearch(saved);
+      try {
+        localStorage.setItem("kids_last_city_search", JSON.stringify(saved));
+      } catch {}
     } else {
       setOrigin(null);
     }
@@ -302,6 +327,11 @@ function Index() {
     setOrigin(null);
     setNearCity("");
     setGeoStatus("");
+    setFreeCityInput("");
+    setLastCitySearch(null);
+    try {
+      localStorage.removeItem("kids_last_city_search");
+    } catch {}
   };
 
   const results = useMemo(() => {
@@ -450,6 +480,19 @@ function Index() {
               </div>
               {cityLookupStatus && (
                 <span className="text-xs text-muted-foreground">{cityLookupStatus}</span>
+              )}
+              {lastCitySearch && origin?.label !== lastCitySearch.result.label && (
+                <button
+                  onClick={() => {
+                    setOrigin(lastCitySearch.result);
+                    setNearCity("");
+                    setFreeCityInput(lastCitySearch.cityName);
+                    setGeoStatus("");
+                  }}
+                  className="glass-chip inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs whitespace-nowrap"
+                >
+                  🕘 חיפוש אחרון: {lastCitySearch.cityName}
+                </button>
               )}
               <div className="flex items-center gap-2 flex-1">
                 <label className="text-sm whitespace-nowrap">רדיוס: {radius} ק"מ</label>
