@@ -60,6 +60,8 @@ const TEXT_QUERIES = [
 const ACTIVITY_TEXT_QUERIES = [
   "משחקייה לילדים",
   "פעלטון",
+  "פעלטון בקניון",
+  "אזור משחקים לילדים בקניון",
   "פארק שעשועים לילדים",
   "גני שעשועים",
   "מרכז משחקים",
@@ -69,11 +71,14 @@ const ACTIVITY_TEXT_QUERIES = [
   "מוזיאון אינטראקטיבי",
   "אטרקציות לילדים",
   "פעילות לילדים",
+  "קולנוע בקניון",
+  "מתחם בילוי לילדים בקניון",
   "soft play",
   "jump park",
   "trampoline park",
   "indoor playground",
   "kids workshop",
+  "kids play area mall",
 ];
 
 export type PlaceResult = {
@@ -93,6 +98,7 @@ export type PlaceResult = {
   openShabbat: boolean | null;
   environment: "ממוזג" | "פתוח" | "משולב" | null;
   ageRange: { min: number; max: number } | null;
+  isSoftDemoted?: boolean;
 };
 
 const INDOOR_TYPES = new Set([
@@ -283,40 +289,107 @@ export const searchPlaces = createServerFn({ method: "POST" })
       };
     });
 
-    // In activity mode, drop generic businesses (restaurants, cafes, malls, hotels)
-    // that slipped in via free-text queries so results center on real attractions.
-    const EXCLUDE_IN_ACTIVITY = new Set([
-      "restaurant", "hamburger_restaurant", "pizza_restaurant", "family_restaurant",
-      "cafe", "coffee_shop", "bakery", "dessert_shop", "ice_cream_shop",
+    // In activity mode, we no longer hard-drop malls/hotels/gas stations outright —
+    // many malls contain kids' play centers, cinemas or arcades that Google doesn't
+    // list as separate places. Instead we *demote* their ranking so real attractions
+    // surface first, while still surfacing the mall as a fallback with a warning flag.
+    const SOFT_DEMOTE_IN_ACTIVITY = new Set([
       "shopping_mall", "supermarket", "grocery_store", "lodging", "hotel",
       "bar", "night_club", "gas_station",
+    ]);
+    // Plain restaurants/cafes with no attraction signal are still dropped —
+    // they rarely hide a kids' attraction the way malls do.
+    const HARD_EXCLUDE_IN_ACTIVITY = new Set([
+      "restaurant", "hamburger_restaurant", "pizza_restaurant", "family_restaurant",
+      "cafe", "coffee_shop", "bakery", "dessert_shop", "ice_cream_shop",
     ]);
     const ATTRACTION_BOOST = new Set([
       "amusement_park", "amusement_center", "water_park", "zoo", "aquarium",
       "museum", "planetarium", "playground", "tourist_attraction",
       "adventure_sports_center", "roller_coaster", "swimming_pool",
-      "ice_skating_rink", "bowling_alley", "video_arcade",
+      "ice_skating_rink", "bowling_alley", "video_arcade", "movie_theater",
     ]);
+    // Name patterns that hint at a kids' attraction hidden inside a bigger venue
+    // (e.g. "קניון עזריאלי - פעלטון", "יס פלאנט", "Cinema City בתוך הקניון").
+    const HIDDEN_ATTRACTION_NAME_HINT = /פעלטון|משחקיה|משחקייה|יס פלאנט|טרמפולין|סינמה|קולנוע|באולינג|ג'ימבורי|קידילנד|Cinema/i;
 
-    let finalPlaces = places;
-    if (data.activityMode) {
-      finalPlaces = places.filter((p) => {
-        // Keep if any type is an attraction; drop if it's purely excluded.
+    let finalPlaces = places
+      .filter((p) => {
+        if (!data.activityMode) return true;
         const hasAttraction = p.types.some((t) => ATTRACTION_BOOST.has(t));
-        const onlyExcluded = p.types.length > 0 && p.types.every((t) => EXCLUDE_IN_ACTIVITY.has(t));
-        if (onlyExcluded && !hasAttraction) return false;
+        const hasHiddenHint = HIDDEN_ATTRACTION_NAME_HINT.test(p.name);
+        const isHardExcluded = p.types.length > 0 && p.types.every((t) => HARD_EXCLUDE_IN_ACTIVITY.has(t));
+        // Drop only plain restaurants/cafes with zero attraction signal.
+        if (isHardExcluded && !hasAttraction && !hasHiddenHint) return false;
         return true;
+      })
+      .map((p) => {
+        const isSoftDemoted =
+          data.activityMode &&
+          p.types.length > 0 &&
+          p.types.every((t) => SOFT_DEMOTE_IN_ACTIVITY.has(t)) &&
+          !p.types.some((t) => ATTRACTION_BOOST.has(t)) &&
+          !HIDDEN_ATTRACTION_NAME_HINT.test(p.name);
+        return { ...p, isSoftDemoted };
       });
-    }
 
-    // Sort by rating*log(count), with a boost for attraction types in activity mode.
+    // Sort by rating*log(count), with a boost for attraction types/hidden hints
+    // in activity mode, and a penalty (not removal) for soft-demoted mall/hotel entries.
     finalPlaces.sort((a, b) => {
-      const boostA = data.activityMode && a.types.some((t) => ATTRACTION_BOOST.has(t)) ? 1.5 : 1;
-      const boostB = data.activityMode && b.types.some((t) => ATTRACTION_BOOST.has(t)) ? 1.5 : 1;
-      const sa = boostA * (a.rating ?? 0) * Math.log10((a.userRatingCount ?? 0) + 10);
-      const sb = boostB * (b.rating ?? 0) * Math.log10((b.userRatingCount ?? 0) + 10);
+      const boostA =
+        data.activityMode &&
+        (a.types.some((t) => ATTRACTION_BOOST.has(t)) || HIDDEN_ATTRACTION_NAME_HINT.test(a.name))
+          ? 1.6
+          : 1;
+      const boostB =
+        data.activityMode &&
+        (b.types.some((t) => ATTRACTION_BOOST.has(t)) || HIDDEN_ATTRACTION_NAME_HINT.test(b.name))
+          ? 1.6
+          : 1;
+      const demoteA = (a as any).isSoftDemoted ? 0.5 : 1;
+      const demoteB = (b as any).isSoftDemoted ? 0.5 : 1;
+      const sa = boostA * demoteA * (a.rating ?? 0) * Math.log10((a.userRatingCount ?? 0) + 10);
+      const sb = boostB * demoteB * (b.rating ?? 0) * Math.log10((b.userRatingCount ?? 0) + 10);
       return sb - sa;
     });
 
     return { places: finalPlaces.slice(0, 60) };
+  });
+
+
+// Free-text city geocoding — lets users search any city in Israel, not just
+// the ones hardcoded in the client-side CITY_COORDS list.
+export const geocodeCity = createServerFn({ method: "POST" })
+  .inputValidator((data: { cityName: string }) => ({
+    cityName: (data.cityName ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ data }): Promise<{ lat: number; lng: number; label: string } | null> => {
+    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+    const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+    if (!LOVABLE_API_KEY || !GOOGLE_MAPS_API_KEY || !data.cityName) return null;
+
+    const res = await fetch(`${GATEWAY_URL}/places/v1/places:searchText`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "X-Connection-Api-Key": GOOGLE_MAPS_API_KEY,
+        "Content-Type": "application/json",
+        "X-Goog-FieldMask": "places.location,places.displayName",
+      },
+      body: JSON.stringify({
+        textQuery: `${data.cityName}, ישראל`,
+        languageCode: "he",
+        regionCode: "IL",
+        maxResultCount: 1,
+      }),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { places?: { location?: { latitude: number; longitude: number }; displayName?: { text?: string } }[] };
+    const place = json.places?.[0];
+    if (!place?.location) return null;
+    return {
+      lat: place.location.latitude,
+      lng: place.location.longitude,
+      label: place.displayName?.text ?? data.cityName,
+    };
   });

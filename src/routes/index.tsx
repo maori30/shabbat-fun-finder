@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
-import { searchPlaces, type PlaceResult } from "@/lib/places.functions";
+import { searchPlaces, geocodeCity, type PlaceResult } from "@/lib/places.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -199,6 +199,29 @@ function Index() {
   const [googleError, setGoogleError] = useState<string>("");
   const [activityMode, setActivityMode] = useState<boolean>(false);
   const searchPlacesFn = useServerFn(searchPlaces);
+  const geocodeCityFn = useServerFn(geocodeCity);
+  const [freeCityInput, setFreeCityInput] = useState<string>("");
+  const [cityLookupStatus, setCityLookupStatus] = useState<string>("");
+
+  const searchAnyCity = async (cityInput: string) => {
+    const trimmed = cityInput.trim();
+    if (!trimmed) return;
+    setCityLookupStatus("מחפש עיר...");
+    try {
+      const result = await geocodeCityFn({ data: { cityName: trimmed } });
+      if (result) {
+        setOrigin(result);
+        setNearCity("");
+        setGeoStatus("");
+        setCityLookupStatus("");
+      } else {
+        setCityLookupStatus("לא נמצאה עיר כזו, נסו שם מלא יותר");
+      }
+    } catch (e) {
+      setCityLookupStatus("שגיאה בחיפוש העיר");
+      console.error(e);
+    }
+  };
 
   const runGoogleSearch = async () => {
     if (!origin) {
@@ -401,6 +424,29 @@ function Index() {
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
+              <div className="flex items-center gap-1">
+                <input
+                  value={freeCityInput}
+                  onChange={(e) => setFreeCityInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      searchAnyCity(freeCityInput);
+                    }
+                  }}
+                  placeholder="או הקלידו כל עיר בישראל..."
+                  className="rounded-xl border bg-background px-3 py-2 text-sm w-40"
+                />
+                <button
+                  onClick={() => searchAnyCity(freeCityInput)}
+                  className="rounded-xl border px-2 py-2 text-sm hover:bg-secondary whitespace-nowrap"
+                >
+                  🔎 חפש עיר
+                </button>
+              </div>
+              {cityLookupStatus && (
+                <span className="text-xs text-muted-foreground">{cityLookupStatus}</span>
+              )}
               <div className="flex items-center gap-2 flex-1">
                 <label className="text-sm whitespace-nowrap">רדיוס: {radius} ק"מ</label>
                 <input
@@ -523,6 +569,11 @@ function Index() {
                       {p.ageRange && (
                         <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground font-semibold">
                           👶 גילאי {p.ageRange.min}–{p.ageRange.max}
+                        </span>
+                      )}
+                      {p.isSoftDemoted && (
+                        <span className="rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 font-semibold">
+                          ⚠️ בדקו שעות אטרקציה פנימית (פעלטון/קולנוע)
                         </span>
                       )}
                     </div>
