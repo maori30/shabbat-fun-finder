@@ -96,35 +96,6 @@ export const searchPlaces = createServerFn({ method: "POST" })
       return { places: [], error: "Google Maps not configured" };
     }
 
-    const useText = data.keyword.trim().length > 0;
-    const endpoint = useText ? "places/v1/places:searchText" : "places/v1/places:searchNearby";
-
-    const body = useText
-      ? {
-          textQuery: data.keyword,
-          languageCode: "he",
-          regionCode: "IL",
-          maxResultCount: 20,
-          locationBias: {
-            circle: {
-              center: { latitude: data.lat, longitude: data.lng },
-              radius: data.radius,
-            },
-          },
-        }
-      : {
-          includedTypes: KIDS_TYPES,
-          maxResultCount: 20,
-          languageCode: "he",
-          regionCode: "IL",
-          locationRestriction: {
-            circle: {
-              center: { latitude: data.lat, longitude: data.lng },
-              radius: data.radius,
-            },
-          },
-        };
-
     const fieldMask = [
       "places.id",
       "places.displayName",
@@ -141,42 +112,95 @@ export const searchPlaces = createServerFn({ method: "POST" })
       "places.regularOpeningHours.weekdayDescriptions",
     ].join(",");
 
-    const response = await fetch(`${GATEWAY_URL}/${endpoint}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": GOOGLE_MAPS_API_KEY,
-        "Content-Type": "application/json",
-        "X-Goog-FieldMask": fieldMask,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error(`Places gateway failed [${response.status}]: ${text}`);
-      return { places: [], error: `שגיאה מ-Google (${response.status})` };
-    }
-
-    const json = (await response.json()) as {
-      places?: Array<{
-        id: string;
-        displayName?: { text?: string };
-        formattedAddress?: string;
-        location?: { latitude: number; longitude: number };
-        rating?: number;
-        userRatingCount?: number;
-        googleMapsUri?: string;
-        websiteUri?: string;
-        primaryType?: string;
-        primaryTypeDisplayName?: { text?: string };
-        types?: string[];
-        currentOpeningHours?: { openNow?: boolean };
-        regularOpeningHours?: { weekdayDescriptions?: string[] };
-      }>;
+    const circle = {
+      center: { latitude: data.lat, longitude: data.lng },
+      radius: data.radius,
     };
 
-    const places: PlaceResult[] = (json.places ?? []).map((p) => {
+    type RawPlace = {
+      id: string;
+      displayName?: { text?: string };
+      formattedAddress?: string;
+      location?: { latitude: number; longitude: number };
+      rating?: number;
+      userRatingCount?: number;
+      googleMapsUri?: string;
+      websiteUri?: string;
+      primaryType?: string;
+      primaryTypeDisplayName?: { text?: string };
+      types?: string[];
+      currentOpeningHours?: { openNow?: boolean };
+      regularOpeningHours?: { weekdayDescriptions?: string[] };
+    };
+
+    async function callGoogle(endpoint: string, body: unknown): Promise<RawPlace[]> {
+      const res = await fetch(`${GATEWAY_URL}/${endpoint}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "X-Connection-Api-Key": GOOGLE_MAPS_API_KEY!,
+          "Content-Type": "application/json",
+          "X-Goog-FieldMask": fieldMask,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        console.error(`Places gateway failed [${res.status}]: ${await res.text()}`);
+        return [];
+      }
+      const json = (await res.json()) as { places?: RawPlace[] };
+      return json.places ?? [];
+    }
+
+    const useText = data.keyword.trim().length > 0;
+
+    let batches: Promise<RawPlace[]>[];
+    if (useText) {
+      batches = [
+        callGoogle("places/v1/places:searchText", {
+          textQuery: data.keyword,
+          languageCode: "he",
+          regionCode: "IL",
+          maxResultCount: 20,
+          locationBias: { circle },
+        }),
+      ];
+    } else {
+      batches = [
+        ...TYPE_GROUPS.map((includedTypes) =>
+          callGoogle("places/v1/places:searchNearby", {
+            includedTypes,
+            maxResultCount: 20,
+            languageCode: "he",
+            regionCode: "IL",
+            locationRestriction: { circle },
+          })
+        ),
+        ...TEXT_QUERIES.map((textQuery) =>
+          callGoogle("places/v1/places:searchText", {
+            textQuery,
+            languageCode: "he",
+            regionCode: "IL",
+            maxResultCount: 10,
+            locationBias: { circle },
+          })
+        ),
+      ];
+    }
+
+    const results = await Promise.all(batches);
+    const seen = new Set<string>();
+    const merged: RawPlace[] = [];
+    for (const arr of results) {
+      for (const p of arr) {
+        if (p.id && !seen.has(p.id)) {
+          seen.add(p.id);
+          merged.push(p);
+        }
+      }
+    }
+
+    const places: PlaceResult[] = merged.map((p) => {
       const weekly = p.regularOpeningHours?.weekdayDescriptions ?? [];
       const satLine = weekly.find((d) => d.startsWith("שבת"));
       let openShabbat: boolean | null = null;
@@ -205,5 +229,12 @@ export const searchPlaces = createServerFn({ method: "POST" })
       };
     });
 
-    return { places };
+    // Sort by rating*log(count) so the strong family spots float up.
+    places.sort((a, b) => {
+      const sa = (a.rating ?? 0) * Math.log10((a.userRatingCount ?? 0) + 10);
+      const sb = (b.rating ?? 0) * Math.log10((b.userRatingCount ?? 0) + 10);
+      return sb - sa;
+    });
+
+    return { places: places.slice(0, 60) };
   });
