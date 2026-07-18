@@ -218,8 +218,10 @@ export const searchPlaces = createServerFn({ method: "POST" })
         }),
       ];
     } else {
+      const typeGroups = data.activityMode ? ACTIVITY_TYPE_GROUPS : TYPE_GROUPS;
+      const textQueries = data.activityMode ? ACTIVITY_TEXT_QUERIES : TEXT_QUERIES;
       batches = [
-        ...TYPE_GROUPS.map((includedTypes) =>
+        ...typeGroups.map((includedTypes) =>
           callGoogle("places/v1/places:searchNearby", {
             includedTypes,
             maxResultCount: 20,
@@ -228,7 +230,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
             locationRestriction: { circle },
           })
         ),
-        ...TEXT_QUERIES.map((textQuery) =>
+        ...textQueries.map((textQuery) =>
           callGoogle("places/v1/places:searchText", {
             textQuery,
             languageCode: "he",
