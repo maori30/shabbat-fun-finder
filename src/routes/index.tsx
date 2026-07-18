@@ -331,7 +331,7 @@ function Index() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
-      <header className="bg-gradient-to-br from-primary to-accent-foreground text-primary-foreground">
+      <header className="glass-panel bg-gradient-to-br from-primary/70 to-accent-foreground/60 text-primary-foreground rounded-b-[28px]">
         <div className="mx-auto max-w-5xl px-4 py-10">
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">כיף לילדים 🎈</h1>
           <p className="mt-2 text-base md:text-lg opacity-90">
@@ -341,7 +341,7 @@ function Index() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-6">
-        <section className="rounded-2xl border bg-card p-4 shadow-sm">
+        <section className="glass-panel rounded-2xl p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
               value={query}
@@ -404,12 +404,12 @@ function Index() {
             </label>
           </div>
 
-          <div className="mt-4 rounded-xl border bg-background/60 p-3">
+          <div className="glass-panel mt-4 rounded-2xl p-3">
             <div className="text-sm font-semibold mb-2">🔎 חיפוש לפי קרבה אליי</div>
             <div className="flex flex-col md:flex-row gap-2 md:items-center">
               <button
                 onClick={useMyLocation}
-                className="rounded-xl bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90"
+                className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-medium"
               >
                 📍 השתמש במיקום שלי
               </button>
@@ -417,7 +417,7 @@ function Index() {
               <select
                 value={nearCity}
                 onChange={(e) => pickCity(e.target.value)}
-                className="rounded-xl border bg-background px-3 py-2 text-sm"
+                className="glass-select rounded-2xl px-3 py-2 text-sm"
               >
                 <option value="">בחרו עיר קרובה...</option>
                 {cityNames.map((c) => (
@@ -435,11 +435,11 @@ function Index() {
                     }
                   }}
                   placeholder="או הקלידו כל עיר בישראל..."
-                  className="rounded-xl border bg-background px-3 py-2 text-sm w-40"
+                  className="glass-field rounded-2xl px-3 py-2 text-sm w-40"
                 />
                 <button
                   onClick={() => searchAnyCity(freeCityInput)}
-                  className="rounded-xl border px-2 py-2 text-sm hover:bg-secondary whitespace-nowrap"
+                  className="glass-btn rounded-2xl px-2 py-2 text-sm whitespace-nowrap"
                 >
                   🔎 חפש עיר
                 </button>
@@ -462,7 +462,7 @@ function Index() {
               {origin && (
                 <button
                   onClick={clearNearby}
-                  className="rounded-xl border px-3 py-2 text-sm hover:bg-secondary"
+                  className="glass-btn rounded-2xl px-3 py-2 text-sm"
                 >
                   נקה
                 </button>
@@ -483,19 +483,19 @@ function Index() {
               <button
                 onClick={runGoogleSearch}
                 disabled={googleLoading}
-                className="rounded-xl bg-emerald-600 text-white px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+                className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-semibold disabled:opacity-50"
               >
                 {googleLoading ? "מחפש..." : "🌍 חפש מקומות אמיתיים מ-Google"}
               </button>
               {googleResults && (
                 <button
                   onClick={clearGoogle}
-                  className="rounded-xl border px-3 py-2 text-sm hover:bg-secondary"
+                  className="glass-btn rounded-2xl px-3 py-2 text-sm"
                 >
                   חזור לרשימה שלנו
                 </button>
               )}
-              <label className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer hover:bg-secondary">
+              <label className="glass-chip inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm cursor-pointer">
                 <input
                   type="checkbox"
                   checked={activityMode}
@@ -523,7 +523,7 @@ function Index() {
               {googleResults.map((p) => {
                 const dist = origin ? distanceKm(origin, { lat: p.lat, lng: p.lng }) : null;
                 return (
-                  <article key={p.id} className="rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                  <article key={p.id} className="glass-card rounded-2xl p-4 transition-shadow overflow-hidden">
                     {p.photoUri ? (
                       <img
                         src={p.photoUri}
@@ -625,7 +625,7 @@ function Index() {
               })}
             </section>
             {googleResults.length === 0 && !googleLoading && (
-              <div className="mt-8 rounded-2xl border bg-card p-8 text-center text-muted-foreground">
+              <div className="glass-empty mt-8 rounded-2xl p-8 text-center text-muted-foreground">
                 לא נמצאו תוצאות ב-Google. נסו לשנות את החיפוש או הרדיוס.
               </div>
             )}
@@ -638,7 +638,7 @@ function Index() {
 
         <section className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {results.map((a) => (
-            <article key={a.id} className="rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+            <article key={a.id} className="glass-card rounded-2xl p-4 transition-shadow">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-3xl">{a.emoji}</div>
@@ -711,7 +711,7 @@ function Index() {
         </section>
 
         {results.length === 0 && (
-          <div className="mt-8 rounded-2xl border bg-card p-8 text-center text-muted-foreground">
+          <div className="glass-empty mt-8 rounded-2xl p-8 text-center text-muted-foreground">
             לא נמצאו אטרקציות מתאימות. נסו לשנות את הסינון או להגדיל את הרדיוס.
           </div>
         )}
