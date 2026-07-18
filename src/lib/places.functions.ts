@@ -17,7 +17,19 @@ const TYPE_GROUPS: string[][] = [
   ["library", "community_center", "event_venue", "banquet_hall"],
 ];
 
-// Free-text queries in Hebrew to catch places Google mis-categorizes.
+// Focused type groups for "activity mode" — attractions/parks/pools/workshops,
+// no cafes/restaurants/malls/generic venues.
+const ACTIVITY_TYPE_GROUPS: string[][] = [
+  ["amusement_park", "amusement_center", "water_park", "adventure_sports_center", "roller_coaster"],
+  ["zoo", "aquarium", "wildlife_park", "wildlife_refuge", "botanical_garden"],
+  ["museum", "planetarium", "art_gallery", "cultural_center"],
+  ["park", "national_park", "state_park", "playground"],
+  ["tourist_attraction", "observation_deck"],
+  ["swimming_pool", "ice_skating_rink", "skateboard_park", "sports_complex"],
+  ["bowling_alley", "video_arcade", "movie_theater"],
+];
+
+// Free-text queries in Hebrew + English to catch places Google mis-categorizes.
 const TEXT_QUERIES = [
   "משחקייה לילדים",
   "פעלטון",
@@ -29,10 +41,39 @@ const TEXT_QUERIES = [
   "מתאים לילדים",
   "בילוי משפחות",
   "פארק שעשועים לילדים",
+  "גני שעשועים",
+  "מרכז משחקים",
+  "חדר משחקים",
   "סדנאות לילדים",
+  "בריכת שחייה משפחתית",
+  "מוזיאון אינטראקטיבי",
   "Playground",
   "kids activities",
   "family friendly attractions",
+  "soft play",
+  "jump park",
+  "trampoline park",
+  "indoor playground",
+];
+
+// Tighter subset when "activity mode" is on — focus on attractions, not cafes.
+const ACTIVITY_TEXT_QUERIES = [
+  "משחקייה לילדים",
+  "פעלטון",
+  "פארק שעשועים לילדים",
+  "גני שעשועים",
+  "מרכז משחקים",
+  "חדר משחקים",
+  "סדנאות לילדים",
+  "בריכת שחייה משפחתית",
+  "מוזיאון אינטראקטיבי",
+  "אטרקציות לילדים",
+  "פעילות לילדים",
+  "soft play",
+  "jump park",
+  "trampoline park",
+  "indoor playground",
+  "kids workshop",
 ];
 
 export type PlaceResult = {
@@ -90,13 +131,14 @@ function inferAgeRange(types: string[], name: string): PlaceResult["ageRange"] {
 }
 
 export const searchPlaces = createServerFn({ method: "POST" })
-  .inputValidator((data: { lat: number; lng: number; radius: number; keyword?: string }) => {
+  .inputValidator((data: { lat: number; lng: number; radius: number; keyword?: string; activityMode?: boolean }) => {
     if (typeof data.lat !== "number" || typeof data.lng !== "number") throw new Error("Bad coords");
     return {
       lat: data.lat,
       lng: data.lng,
       radius: Math.min(Math.max(data.radius, 500), 50000),
       keyword: (data.keyword ?? "").slice(0, 100),
+      activityMode: !!data.activityMode,
     };
   })
   .handler(async ({ data }): Promise<{ places: PlaceResult[]; error?: string }> => {
@@ -176,8 +218,10 @@ export const searchPlaces = createServerFn({ method: "POST" })
         }),
       ];
     } else {
+      const typeGroups = data.activityMode ? ACTIVITY_TYPE_GROUPS : TYPE_GROUPS;
+      const textQueries = data.activityMode ? ACTIVITY_TEXT_QUERIES : TEXT_QUERIES;
       batches = [
-        ...TYPE_GROUPS.map((includedTypes) =>
+        ...typeGroups.map((includedTypes) =>
           callGoogle("places/v1/places:searchNearby", {
             includedTypes,
             maxResultCount: 20,
@@ -186,7 +230,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
             locationRestriction: { circle },
           })
         ),
-        ...TEXT_QUERIES.map((textQuery) =>
+        ...textQueries.map((textQuery) =>
           callGoogle("places/v1/places:searchText", {
             textQuery,
             languageCode: "he",
@@ -239,12 +283,40 @@ export const searchPlaces = createServerFn({ method: "POST" })
       };
     });
 
-    // Sort by rating*log(count) so the strong family spots float up.
-    places.sort((a, b) => {
-      const sa = (a.rating ?? 0) * Math.log10((a.userRatingCount ?? 0) + 10);
-      const sb = (b.rating ?? 0) * Math.log10((b.userRatingCount ?? 0) + 10);
+    // In activity mode, drop generic businesses (restaurants, cafes, malls, hotels)
+    // that slipped in via free-text queries so results center on real attractions.
+    const EXCLUDE_IN_ACTIVITY = new Set([
+      "restaurant", "hamburger_restaurant", "pizza_restaurant", "family_restaurant",
+      "cafe", "coffee_shop", "bakery", "dessert_shop", "ice_cream_shop",
+      "shopping_mall", "supermarket", "grocery_store", "lodging", "hotel",
+      "bar", "night_club", "gas_station",
+    ]);
+    const ATTRACTION_BOOST = new Set([
+      "amusement_park", "amusement_center", "water_park", "zoo", "aquarium",
+      "museum", "planetarium", "playground", "tourist_attraction",
+      "adventure_sports_center", "roller_coaster", "swimming_pool",
+      "ice_skating_rink", "bowling_alley", "video_arcade",
+    ]);
+
+    let finalPlaces = places;
+    if (data.activityMode) {
+      finalPlaces = places.filter((p) => {
+        // Keep if any type is an attraction; drop if it's purely excluded.
+        const hasAttraction = p.types.some((t) => ATTRACTION_BOOST.has(t));
+        const onlyExcluded = p.types.length > 0 && p.types.every((t) => EXCLUDE_IN_ACTIVITY.has(t));
+        if (onlyExcluded && !hasAttraction) return false;
+        return true;
+      });
+    }
+
+    // Sort by rating*log(count), with a boost for attraction types in activity mode.
+    finalPlaces.sort((a, b) => {
+      const boostA = data.activityMode && a.types.some((t) => ATTRACTION_BOOST.has(t)) ? 1.5 : 1;
+      const boostB = data.activityMode && b.types.some((t) => ATTRACTION_BOOST.has(t)) ? 1.5 : 1;
+      const sa = boostA * (a.rating ?? 0) * Math.log10((a.userRatingCount ?? 0) + 10);
+      const sb = boostB * (b.rating ?? 0) * Math.log10((b.userRatingCount ?? 0) + 10);
       return sb - sa;
     });
 
-    return { places: places.slice(0, 60) };
+    return { places: finalPlaces.slice(0, 60) };
   });
