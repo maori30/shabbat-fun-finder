@@ -30,12 +30,13 @@ type Attraction = {
   lat: number;
   lng: number;
   url?: string;
+  price?: string;
 };
 
 const ATTRACTIONS: Attraction[] = [
   { id: 1, name: "מוזיאון המדע ע\"ש בלומפילד", city: "ירושלים", region: "ירושלים", category: "מוזיאון", openShabbat: false, environment: "ממוזג", minAge: 4, maxAge: 16, description: "תערוכות מדע אינטראקטיביות לכל המשפחה.", emoji: "🔬", lat: 31.7767, lng: 35.1975, url: "https://www.mada.org.il/" },
   { id: 2, name: "לונה פארק סופרלנד", city: "ראשון לציון", region: "מרכז", category: "פארק שעשועים", openShabbat: false, environment: "פתוח", minAge: 3, maxAge: 16, description: "מתקנים לכל הגילאים, קרוסלות ורכבות הרים.", emoji: "🎢", lat: 31.9730, lng: 34.7925, url: "https://www.superland.co.il/" },
-  { id: 3, name: "ספארי רמת גן", city: "רמת גן", region: "מרכז", category: "גן חיות", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 16, description: "טיול ברכב בין חיות בר וגן חיות מטופח.", emoji: "🦁", lat: 32.0787, lng: 34.8137, url: "https://www.safari.co.il/" },
+  { id: 3, name: "ספארי רמת גן", city: "רמת גן", region: "מרכז", category: "גן חיות", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 16, description: "טיול ברכב בין חיות בר וגן חיות מטופח.", emoji: "🦁", lat: 32.0787, lng: 34.8137, url: "https://www.safari.co.il/", price: "החל מ־119 ₪ באתר" },
   { id: 4, name: "מיני ישראל", city: "לטרון", region: "מרכז", category: "פארק", openShabbat: true, environment: "פתוח", minAge: 3, maxAge: 12, description: "דגמים זעירים של אתרים מפורסמים בישראל.", emoji: "🏛️", lat: 31.8386, lng: 34.9861, url: "https://www.minisrael.co.il/" },
   { id: 5, name: "מוזיאון הילדים חולון", city: "חולון", region: "מרכז", category: "מוזיאון", openShabbat: false, environment: "ממוזג", minAge: 2, maxAge: 12, description: "חוויות והדמיות אינטראקטיביות לכל הגילאים.", emoji: "🎨", lat: 32.0158, lng: 34.7874, url: "https://www.childrensmuseum.org.il/" },
   { id: 6, name: "ימית 2000 - פארק מים", city: "חולון", region: "מרכז", category: "פארק מים", openShabbat: true, environment: "פתוח", minAge: 3, maxAge: 16, description: "מגלשות מים, בריכות ופעילויות רטובות.", emoji: "🏊", lat: 32.0089, lng: 34.7745, url: "https://www.ymit2000.co.il/" },
@@ -53,7 +54,7 @@ const ATTRACTIONS: Attraction[] = [
   { id: 18, name: "פארק אריאל שרון (הירקון)", city: "תל אביב", region: "מרכז", category: "פארק", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "מרחבים ירוקים, אגם ומסלולי אופניים.", emoji: "🚴", lat: 32.0500, lng: 34.8000 },
   { id: 19, name: "יער בן שמן", city: "בן שמן", region: "מרכז", category: "טבע", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 16, description: "פיקניק, אופניים ופינות משחק ביער.", emoji: "🌳", lat: 31.9556, lng: 34.9247 },
   { id: 20, name: "פארק המים שפיים", city: "שפיים", region: "מרכז", category: "פארק מים", openShabbat: true, environment: "פתוח", minAge: 2, maxAge: 16, description: "בריכות ומגלשות מים בקיבוץ שפיים.", emoji: "💦", lat: 32.3350, lng: 34.8319, url: "https://www.shefayim.co.il/waterpark/" },
-  { id: 21, name: "מדעטק חיפה", city: "חיפה", region: "צפון", category: "מוזיאון", openShabbat: true, environment: "ממוזג", minAge: 4, maxAge: 16, description: "מוצגי מדע אינטראקטיביים לכל המשפחה.", emoji: "⚗️", lat: 32.7935, lng: 34.9895, url: "https://www.madatech.org.il/" },
+  { id: 21, name: "מדעטק חיפה", city: "חיפה", region: "צפון", category: "מוזיאון", openShabbat: true, environment: "ממוזג", minAge: 4, maxAge: 16, description: "מוצגי מדע אינטראקטיביים לכל המשפחה.", emoji: "⚗️", lat: 32.7935, lng: 34.9895, url: "https://www.madatech.org.il/", price: "84 ₪ ברכישה באתר" },
   { id: 22, name: "פארק שרונה", city: "תל אביב", region: "מרכז", category: "פארק", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "מתחם ירוק עם מזרקה, מסעדות ומגרשים.", emoji: "⛲", lat: 32.0722, lng: 34.7855 },
   { id: 23, name: "נמל תל אביב", city: "תל אביב", region: "מרכז", category: "טיילת", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "טיילת עם משחקים, אוכל וים.", emoji: "⚓", lat: 32.0996, lng: 34.7719, url: "https://www.namal.co.il/" },
   { id: 24, name: "גן לאומי אשקלון", city: "אשקלון", region: "דרום", category: "פארק לאומי", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 16, description: "טיולים, ארכיאולוגיה וחוף ים.", emoji: "🏖️", lat: 31.6688, lng: 34.5715 },
@@ -124,6 +125,8 @@ const ATTRACTIONS: Attraction[] = [
 ];
 
 // Known city centers for "search near city" without geolocation
+const CATEGORIES = Array.from(new Set(ATTRACTIONS.map((a) => a.category))).sort();
+
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   "ירושלים": { lat: 31.7683, lng: 35.2137 },
   "תל אביב": { lat: 32.0853, lng: 34.7818 },
@@ -187,6 +190,7 @@ function Index() {
   const [age, setAge] = useState<number | "">("");
   const [env, setEnv] = useState<"all" | "ממוזג" | "פתוח" | "משולב">("all");
   const [region, setRegion] = useState<"all" | Attraction["region"]>("all");
+  const [category, setCategory] = useState<string>("all");
 
   const [nearCity, setNearCity] = useState<string>("");
   const [radius, setRadius] = useState<number>(30);
@@ -365,6 +369,7 @@ function Index() {
       if (shabbatOnly && !a.openShabbat) return false;
       if (env !== "all" && a.environment !== env) return false;
       if (region !== "all" && a.region !== region) return false;
+      if (category !== "all" && a.category !== category) return false;
       if (age !== "" && (age < a.minAge || age > a.maxAge)) return false;
       if (query.trim()) {
         const q = query.trim();
@@ -382,7 +387,7 @@ function Index() {
         .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
     }
     return list;
-  }, [query, shabbatOnly, age, env, region, origin, radius, showFavOnly, favorites]);
+  }, [query, shabbatOnly, age, env, region, category, origin, radius, showFavOnly, favorites]);
 
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
@@ -438,6 +443,17 @@ function Index() {
                 <option value="מרכז">מרכז</option>
                 <option value="ירושלים">ירושלים</option>
                 <option value="דרום">דרום</option>
+              </select>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="glass-select rounded-xl px-3 py-3 text-base"
+                aria-label="סינון לפי קטגוריה"
+              >
+                <option value="all">כל הקטגוריות</option>
+                {CATEGORIES.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -764,6 +780,15 @@ function Index() {
                 <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
                   👶 גילאי {a.minAge}–{a.maxAge}
                 </span>
+                {a.price ? (
+                  <span className="rounded-full bg-amber-100 text-amber-900 px-2.5 py-1 font-semibold">
+                    🎟️ {a.price}
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
+                    🎟️ מחיר: בדקו באתר
+                  </span>
+                )}
                 <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
                   📍 {a.region}
                 </span>
