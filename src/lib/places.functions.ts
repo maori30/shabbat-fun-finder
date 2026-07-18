@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
+const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
+const searchCache = new Map<string, { expiresAt: number; data: { places: PlaceResult[]; error?: string } }>();
 
 // Places API searchNearby limits combos across category tables, so we
 // run several small nearby searches in parallel and merge the results.
@@ -33,25 +35,10 @@ const ACTIVITY_TYPE_GROUPS: string[][] = [
 const TEXT_QUERIES = [
   "משחקייה לילדים",
   "פעלטון",
-  "חדר בריחה משפחות",
-  "קפה עם פינת ילדים",
-  "פעילות לילדים",
   "אטרקציות לילדים",
-  "מקומות בילוי לילדים",
-  "מתאים לילדים",
-  "בילוי משפחות",
   "פארק שעשועים לילדים",
-  "גני שעשועים",
-  "מרכז משחקים",
-  "חדר משחקים",
-  "סדנאות לילדים",
-  "בריכת שחייה משפחתית",
   "מוזיאון אינטראקטיבי",
-  "Playground",
   "kids activities",
-  "family friendly attractions",
-  "soft play",
-  "jump park",
   "trampoline park",
   "indoor playground",
 ];
@@ -60,25 +47,11 @@ const TEXT_QUERIES = [
 const ACTIVITY_TEXT_QUERIES = [
   "משחקייה לילדים",
   "פעלטון",
-  "פעלטון בקניון",
-  "אזור משחקים לילדים בקניון",
   "פארק שעשועים לילדים",
-  "גני שעשועים",
-  "מרכז משחקים",
-  "חדר משחקים",
-  "סדנאות לילדים",
-  "בריכת שחייה משפחתית",
   "מוזיאון אינטראקטיבי",
   "אטרקציות לילדים",
-  "פעילות לילדים",
-  "קולנוע בקניון",
-  "מתחם בילוי לילדים בקניון",
-  "soft play",
-  "jump park",
   "trampoline park",
   "indoor playground",
-  "kids workshop",
-  "kids play area mall",
 ];
 
 export type PlaceResult = {
@@ -298,6 +271,18 @@ export const searchPlaces = createServerFn({ method: "POST" })
       return { places: [], error: "Google Maps not configured" };
     }
 
+    const cacheKey = JSON.stringify({
+      lat: Number(data.lat.toFixed(3)),
+      lng: Number(data.lng.toFixed(3)),
+      radius: Math.round(data.radius / 500) * 500,
+      keyword: data.keyword.trim().toLowerCase(),
+      activityMode: data.activityMode,
+    });
+    const cached = searchCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.data;
+    }
+
     const fieldMask = [
       "places.id",
       "places.displayName",
@@ -372,13 +357,13 @@ export const searchPlaces = createServerFn({ method: "POST" })
         }),
       ];
     } else {
-      const typeGroups = data.activityMode ? ACTIVITY_TYPE_GROUPS : TYPE_GROUPS;
-      const textQueries = data.activityMode ? ACTIVITY_TEXT_QUERIES : TEXT_QUERIES;
+      const typeGroups = (data.activityMode ? ACTIVITY_TYPE_GROUPS : TYPE_GROUPS).slice(0, data.activityMode ? 5 : 6);
+      const textQueries = (data.activityMode ? ACTIVITY_TEXT_QUERIES : TEXT_QUERIES).slice(0, data.activityMode ? 4 : 5);
       batches = [
         ...typeGroups.map((includedTypes) =>
           callGoogle("places/v1/places:searchNearby", {
             includedTypes,
-            maxResultCount: 20,
+            maxResultCount: 12,
             languageCode: "he",
             regionCode: "IL",
             locationRestriction: { circle },
@@ -389,7 +374,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
             textQuery,
             languageCode: "he",
             regionCode: "IL",
-            maxResultCount: 10,
+            maxResultCount: 8,
             locationBias: { circle },
           })
         ),
