@@ -2,19 +2,27 @@ import { createServerFn } from "@tanstack/react-start";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
 
-const KIDS_TYPES = [
-  "amusement_park",
-  "amusement_center",
-  "aquarium",
-  "zoo",
-  "tourist_attraction",
-  "water_park",
-  "park",
-  "national_park",
-  "shopping_mall",
-  "movie_theater",
-  "bowling_alley",
-  "playground",
+// Places API searchNearby limits combos across category tables, so we
+// run several small nearby searches in parallel and merge the results.
+const TYPE_GROUPS: string[][] = [
+  ["amusement_park", "amusement_center", "water_park", "adventure_sports_center"],
+  ["zoo", "aquarium", "wildlife_park", "wildlife_refuge", "botanical_garden"],
+  ["tourist_attraction", "cultural_landmark", "historical_place", "observation_deck"],
+  ["park", "national_park", "state_park", "playground", "dog_park"],
+  ["museum", "art_gallery", "planetarium", "cultural_center", "performing_arts_theater"],
+  ["shopping_mall", "movie_theater", "bowling_alley", "video_arcade", "roller_coaster"],
+  ["cafe", "coffee_shop", "ice_cream_shop", "bakery", "dessert_shop"],
+  ["restaurant", "hamburger_restaurant", "pizza_restaurant", "family_restaurant"],
+  ["swimming_pool", "sports_complex", "athletic_field", "skateboard_park", "ice_skating_rink"],
+  ["library", "community_center", "event_venue", "banquet_hall"],
+];
+
+// Free-text queries in Hebrew to catch places Google mis-categorizes.
+const TEXT_QUERIES = [
+  "משחקייה לילדים",
+  "פעלטון",
+  "חדר בריחה משפחות",
+  "קפה עם פינת ילדים",
 ];
 
 export type PlaceResult = {
