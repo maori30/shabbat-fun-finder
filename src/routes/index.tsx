@@ -202,7 +202,20 @@ function Index() {
   const geocodeCityFn = useServerFn(geocodeCity);
   const [freeCityInput, setFreeCityInput] = useState<string>("");
   const [cityLookupStatus, setCityLookupStatus] = useState<string>("");
-  const [lastCitySearch, setLastCitySearch] = useState<{ cityName: string; result: { lat: number; lng: number; label: string } } | null>(null);
+  const [recentCitySearches, setRecentCitySearches] = useState<
+    { cityName: string; result: { lat: number; lng: number; label: string } }[]
+  >([]);
+
+  const addRecentCity = (cityName: string, result: { lat: number; lng: number; label: string }) => {
+    setRecentCitySearches((prev) => {
+      const filtered = prev.filter((c) => c.cityName !== cityName);
+      const next = [{ cityName, result }, ...filtered].slice(0, 8);
+      try {
+        localStorage.setItem("kids_recent_city_searches", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const searchAnyCity = async (cityInput: string) => {
     const trimmed = cityInput.trim();
@@ -216,11 +229,7 @@ function Index() {
         setGeoStatus("");
         setCityLookupStatus("");
         setFreeCityInput(trimmed);
-        const saved = { cityName: trimmed, result };
-        setLastCitySearch(saved);
-        try {
-          localStorage.setItem("kids_last_city_search", JSON.stringify(saved));
-        } catch {}
+        addRecentCity(trimmed, result);
       } else {
         setCityLookupStatus("לא נמצאה עיר כזו, נסו שם מלא יותר");
       }
@@ -268,13 +277,19 @@ function Index() {
       if (raw) setFavorites(JSON.parse(raw));
     } catch {}
     try {
-      const rawCity = localStorage.getItem("kids_last_city_search");
-      if (rawCity) {
-        const saved = JSON.parse(rawCity) as { cityName: string; result: { lat: number; lng: number; label: string } };
-        if (saved?.result?.lat && saved?.result?.lng) {
-          setLastCitySearch(saved);
-          setFreeCityInput(saved.cityName);
-          setOrigin(saved.result);
+      const rawRecent = localStorage.getItem("kids_recent_city_searches");
+      if (rawRecent) {
+        const savedList = JSON.parse(rawRecent) as {
+          cityName: string;
+          result: { lat: number; lng: number; label: string };
+        }[];
+        if (Array.isArray(savedList) && savedList.length > 0) {
+          setRecentCitySearches(savedList);
+          const mostRecent = savedList[0];
+          if (mostRecent?.result?.lat && mostRecent?.result?.lng) {
+            setFreeCityInput(mostRecent.cityName);
+            setOrigin(mostRecent.result);
+          }
         }
       }
     } catch {}
@@ -313,11 +328,7 @@ function Index() {
       const result = { ...CITY_COORDS[city], label: city };
       setOrigin(result);
       setFreeCityInput("");
-      const saved = { cityName: city, result };
-      setLastCitySearch(saved);
-      try {
-        localStorage.setItem("kids_last_city_search", JSON.stringify(saved));
-      } catch {}
+      addRecentCity(city, result);
     } else {
       setOrigin(null);
     }
@@ -328,10 +339,24 @@ function Index() {
     setNearCity("");
     setGeoStatus("");
     setFreeCityInput("");
-    setLastCitySearch(null);
-    try {
-      localStorage.removeItem("kids_last_city_search");
-    } catch {}
+  };
+
+  const selectRecentCity = (item: { cityName: string; result: { lat: number; lng: number; label: string } }) => {
+    setOrigin(item.result);
+    setNearCity("");
+    setFreeCityInput(item.cityName);
+    setGeoStatus("");
+    addRecentCity(item.cityName, item.result);
+  };
+
+  const removeRecentCity = (cityName: string) => {
+    setRecentCitySearches((prev) => {
+      const next = prev.filter((c) => c.cityName !== cityName);
+      try {
+        localStorage.setItem("kids_recent_city_searches", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   };
 
   const results = useMemo(() => {
@@ -481,19 +506,7 @@ function Index() {
               {cityLookupStatus && (
                 <span className="text-xs text-muted-foreground">{cityLookupStatus}</span>
               )}
-              {lastCitySearch && origin?.label !== lastCitySearch.result.label && (
-                <button
-                  onClick={() => {
-                    setOrigin(lastCitySearch.result);
-                    setNearCity("");
-                    setFreeCityInput(lastCitySearch.cityName);
-                    setGeoStatus("");
-                  }}
-                  className="glass-chip inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs whitespace-nowrap"
-                >
-                  🕘 חיפוש אחרון: {lastCitySearch.cityName}
-                </button>
-              )}
+              
               <div className="flex items-center gap-2 flex-1">
                 <label className="text-sm whitespace-nowrap">רדיוס: {radius} ק"מ</label>
                 <input
@@ -524,6 +537,36 @@ function Index() {
               <div className="mt-2 text-xs text-rose-700">{geoStatus}</div>
             )}
           </div>
+
+          {recentCitySearches.length > 0 && (
+            <div className="glass-panel mt-4 rounded-2xl p-3">
+              <div className="text-sm font-semibold mb-2">🕘 חיפושים אחרונים</div>
+              <div className="flex flex-wrap gap-2">
+                {recentCitySearches.map((item) => (
+                  <div
+                    key={item.cityName}
+                    className={`glass-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs whitespace-nowrap ${
+                      origin?.label === item.result.label ? "ring-2 ring-primary/60" : ""
+                    }`}
+                  >
+                    <button
+                      onClick={() => selectRecentCity(item)}
+                      className="hover:underline"
+                    >
+                      {item.cityName}
+                    </button>
+                    <button
+                      onClick={() => removeRecentCity(item.cityName)}
+                      aria-label={`הסר ${item.cityName} מהיסטוריית החיפושים`}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {origin && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
