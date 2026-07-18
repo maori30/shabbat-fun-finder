@@ -2,19 +2,27 @@ import { createServerFn } from "@tanstack/react-start";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
 
-const KIDS_TYPES = [
-  "amusement_park",
-  "amusement_center",
-  "aquarium",
-  "zoo",
-  "tourist_attraction",
-  "water_park",
-  "park",
-  "national_park",
-  "shopping_mall",
-  "movie_theater",
-  "bowling_alley",
-  "playground",
+// Places API searchNearby limits combos across category tables, so we
+// run several small nearby searches in parallel and merge the results.
+const TYPE_GROUPS: string[][] = [
+  ["amusement_park", "amusement_center", "water_park", "adventure_sports_center"],
+  ["zoo", "aquarium", "wildlife_park", "wildlife_refuge", "botanical_garden"],
+  ["tourist_attraction", "cultural_landmark", "historical_place", "observation_deck"],
+  ["park", "national_park", "state_park", "playground", "dog_park"],
+  ["museum", "art_gallery", "planetarium", "cultural_center", "performing_arts_theater"],
+  ["shopping_mall", "movie_theater", "bowling_alley", "video_arcade", "roller_coaster"],
+  ["cafe", "coffee_shop", "ice_cream_shop", "bakery", "dessert_shop"],
+  ["restaurant", "hamburger_restaurant", "pizza_restaurant", "family_restaurant"],
+  ["swimming_pool", "sports_complex", "athletic_field", "skateboard_park", "ice_skating_rink"],
+  ["library", "community_center", "event_venue", "banquet_hall"],
+];
+
+// Free-text queries in Hebrew to catch places Google mis-categorizes.
+const TEXT_QUERIES = [
+  "משחקייה לילדים",
+  "פעלטון",
+  "חדר בריחה משפחות",
+  "קפה עם פינת ילדים",
 ];
 
 export type PlaceResult = {
@@ -88,35 +96,6 @@ export const searchPlaces = createServerFn({ method: "POST" })
       return { places: [], error: "Google Maps not configured" };
     }
 
-    const useText = data.keyword.trim().length > 0;
-    const endpoint = useText ? "places/v1/places:searchText" : "places/v1/places:searchNearby";
-
-    const body = useText
-      ? {
-          textQuery: data.keyword,
-          languageCode: "he",
-          regionCode: "IL",
-          maxResultCount: 20,
-          locationBias: {
-            circle: {
-              center: { latitude: data.lat, longitude: data.lng },
-              radius: data.radius,
-            },
-          },
-        }
-      : {
-          includedTypes: KIDS_TYPES,
-          maxResultCount: 20,
-          languageCode: "he",
-          regionCode: "IL",
-          locationRestriction: {
-            circle: {
-              center: { latitude: data.lat, longitude: data.lng },
-              radius: data.radius,
-            },
-          },
-        };
-
     const fieldMask = [
       "places.id",
       "places.displayName",
@@ -133,42 +112,95 @@ export const searchPlaces = createServerFn({ method: "POST" })
       "places.regularOpeningHours.weekdayDescriptions",
     ].join(",");
 
-    const response = await fetch(`${GATEWAY_URL}/${endpoint}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": GOOGLE_MAPS_API_KEY,
-        "Content-Type": "application/json",
-        "X-Goog-FieldMask": fieldMask,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error(`Places gateway failed [${response.status}]: ${text}`);
-      return { places: [], error: `שגיאה מ-Google (${response.status})` };
-    }
-
-    const json = (await response.json()) as {
-      places?: Array<{
-        id: string;
-        displayName?: { text?: string };
-        formattedAddress?: string;
-        location?: { latitude: number; longitude: number };
-        rating?: number;
-        userRatingCount?: number;
-        googleMapsUri?: string;
-        websiteUri?: string;
-        primaryType?: string;
-        primaryTypeDisplayName?: { text?: string };
-        types?: string[];
-        currentOpeningHours?: { openNow?: boolean };
-        regularOpeningHours?: { weekdayDescriptions?: string[] };
-      }>;
+    const circle = {
+      center: { latitude: data.lat, longitude: data.lng },
+      radius: data.radius,
     };
 
-    const places: PlaceResult[] = (json.places ?? []).map((p) => {
+    type RawPlace = {
+      id: string;
+      displayName?: { text?: string };
+      formattedAddress?: string;
+      location?: { latitude: number; longitude: number };
+      rating?: number;
+      userRatingCount?: number;
+      googleMapsUri?: string;
+      websiteUri?: string;
+      primaryType?: string;
+      primaryTypeDisplayName?: { text?: string };
+      types?: string[];
+      currentOpeningHours?: { openNow?: boolean };
+      regularOpeningHours?: { weekdayDescriptions?: string[] };
+    };
+
+    async function callGoogle(endpoint: string, body: unknown): Promise<RawPlace[]> {
+      const res = await fetch(`${GATEWAY_URL}/${endpoint}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "X-Connection-Api-Key": GOOGLE_MAPS_API_KEY!,
+          "Content-Type": "application/json",
+          "X-Goog-FieldMask": fieldMask,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        console.error(`Places gateway failed [${res.status}]: ${await res.text()}`);
+        return [];
+      }
+      const json = (await res.json()) as { places?: RawPlace[] };
+      return json.places ?? [];
+    }
+
+    const useText = data.keyword.trim().length > 0;
+
+    let batches: Promise<RawPlace[]>[];
+    if (useText) {
+      batches = [
+        callGoogle("places/v1/places:searchText", {
+          textQuery: data.keyword,
+          languageCode: "he",
+          regionCode: "IL",
+          maxResultCount: 20,
+          locationBias: { circle },
+        }),
+      ];
+    } else {
+      batches = [
+        ...TYPE_GROUPS.map((includedTypes) =>
+          callGoogle("places/v1/places:searchNearby", {
+            includedTypes,
+            maxResultCount: 20,
+            languageCode: "he",
+            regionCode: "IL",
+            locationRestriction: { circle },
+          })
+        ),
+        ...TEXT_QUERIES.map((textQuery) =>
+          callGoogle("places/v1/places:searchText", {
+            textQuery,
+            languageCode: "he",
+            regionCode: "IL",
+            maxResultCount: 10,
+            locationBias: { circle },
+          })
+        ),
+      ];
+    }
+
+    const results = await Promise.all(batches);
+    const seen = new Set<string>();
+    const merged: RawPlace[] = [];
+    for (const arr of results) {
+      for (const p of arr) {
+        if (p.id && !seen.has(p.id)) {
+          seen.add(p.id);
+          merged.push(p);
+        }
+      }
+    }
+
+    const places: PlaceResult[] = merged.map((p) => {
       const weekly = p.regularOpeningHours?.weekdayDescriptions ?? [];
       const satLine = weekly.find((d) => d.startsWith("שבת"));
       let openShabbat: boolean | null = null;
@@ -197,5 +229,12 @@ export const searchPlaces = createServerFn({ method: "POST" })
       };
     });
 
-    return { places };
+    // Sort by rating*log(count) so the strong family spots float up.
+    places.sort((a, b) => {
+      const sa = (a.rating ?? 0) * Math.log10((a.userRatingCount ?? 0) + 10);
+      const sb = (b.rating ?? 0) * Math.log10((b.userRatingCount ?? 0) + 10);
+      return sb - sa;
+    });
+
+    return { places: places.slice(0, 60) };
   });
