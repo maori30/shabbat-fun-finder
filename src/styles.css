@@ -144,66 +144,79 @@
 }
 
 
-/* ===== Liquid Glass overlay v3 (deep, fluid, Apple-inspired) ===== */
+/* ===== Liquid Glass overlay v4 (maximum depth, ultra-fluid, Apple-inspired) ===== */
 
 @keyframes liquid-drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(3%, -4%) scale(1.05); }
-  66% { transform: translate(-3%, 3%) scale(0.97); }
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  25% { transform: translate(5%, -6%) scale(1.12) rotate(8deg); }
+  50% { transform: translate(-4%, 5%) scale(0.92) rotate(-6deg); }
+  75% { transform: translate(4%, 4%) scale(1.06) rotate(4deg); }
+}
+
+@keyframes sheen-sweep {
+  0% { transform: translateX(-120%) rotate(20deg); }
+  100% { transform: translateX(220%) rotate(20deg); }
 }
 
 body {
   position: relative;
   background-color: oklch(0.95 0.015 240);
   background-image:
-    radial-gradient(circle at 12% 15%, oklch(0.97 0.02 250 / 55%), transparent 28%),
-    radial-gradient(circle at 88% 8%, oklch(0.82 0.09 230 / 45%), transparent 32%),
-    radial-gradient(circle at 75% 90%, oklch(0.86 0.07 200 / 40%), transparent 30%),
-    linear-gradient(180deg, oklch(0.9 0.035 245), oklch(0.96 0.015 240) 45%, oklch(0.985 0.003 240));
+    radial-gradient(circle at 12% 15%, oklch(0.97 0.03 250 / 65%), transparent 30%),
+    radial-gradient(circle at 88% 8%, oklch(0.8 0.12 230 / 55%), transparent 35%),
+    radial-gradient(circle at 75% 90%, oklch(0.84 0.1 200 / 50%), transparent 32%),
+    linear-gradient(180deg, oklch(0.88 0.045 245), oklch(0.95 0.02 240) 45%, oklch(0.98 0.005 240));
   background-attachment: fixed;
   overflow-x: hidden;
 }
 
 .dark body {
-  background-color: oklch(0.14 0.015 260);
+  background-color: oklch(0.13 0.015 260);
   background-image:
-    radial-gradient(circle at 12% 12%, oklch(0.32 0.05 250 / 55%), transparent 30%),
-    radial-gradient(circle at 85% 10%, oklch(0.28 0.07 230 / 45%), transparent 32%),
-    radial-gradient(circle at 70% 92%, oklch(0.25 0.06 210 / 40%), transparent 30%),
-    linear-gradient(180deg, oklch(0.16 0.02 260), oklch(0.13 0.015 260) 45%, oklch(0.11 0.01 260));
+    radial-gradient(circle at 12% 12%, oklch(0.36 0.07 250 / 65%), transparent 32%),
+    radial-gradient(circle at 85% 10%, oklch(0.32 0.09 230 / 55%), transparent 35%),
+    radial-gradient(circle at 70% 92%, oklch(0.28 0.08 210 / 50%), transparent 32%),
+    linear-gradient(180deg, oklch(0.15 0.025 260), oklch(0.12 0.018 260) 45%, oklch(0.1 0.012 260));
   background-attachment: fixed;
 }
 
-/* Floating liquid orbs behind content — creates the "refraction" backdrop */
+/* Floating liquid orbs behind content — bigger, more vivid, faster drift */
 .liquid-orb {
   position: fixed;
   border-radius: 999px;
   pointer-events: none;
   z-index: 0;
-  filter: blur(6px);
-  opacity: 0.75;
-  animation: liquid-drift 18s ease-in-out infinite;
+  filter: blur(4px);
+  opacity: 0.9;
+  animation: liquid-drift 14s ease-in-out infinite;
 }
 .liquid-orb.orb-a {
-  width: 380px; height: 380px; top: -80px; left: -100px;
-  background: radial-gradient(circle, oklch(0.75 0.13 230 / 60%), transparent 70%);
-  animation-duration: 22s;
+  width: 480px; height: 480px; top: -120px; left: -140px;
+  background: radial-gradient(circle, oklch(0.78 0.17 230 / 75%), transparent 68%);
+  animation-duration: 16s;
 }
 .liquid-orb.orb-b {
-  width: 320px; height: 320px; top: 20%; right: -120px;
-  background: radial-gradient(circle, oklch(0.8 0.1 260 / 55%), transparent 70%);
-  animation-duration: 26s;
-  animation-delay: -6s;
+  width: 420px; height: 420px; top: 15%; right: -160px;
+  background: radial-gradient(circle, oklch(0.82 0.14 260 / 70%), transparent 68%);
+  animation-duration: 19s;
+  animation-delay: -5s;
 }
 .liquid-orb.orb-c {
-  width: 300px; height: 300px; bottom: -100px; left: 30%;
-  background: radial-gradient(circle, oklch(0.82 0.08 200 / 50%), transparent 70%);
-  animation-duration: 20s;
-  animation-delay: -10s;
+  width: 400px; height: 400px; bottom: -140px; left: 25%;
+  background: radial-gradient(circle, oklch(0.84 0.12 200 / 65%), transparent 68%);
+  animation-duration: 15s;
+  animation-delay: -8s;
 }
-.dark .liquid-orb.orb-a { background: radial-gradient(circle, oklch(0.4 0.1 230 / 55%), transparent 70%); }
-.dark .liquid-orb.orb-b { background: radial-gradient(circle, oklch(0.38 0.09 260 / 50%), transparent 70%); }
-.dark .liquid-orb.orb-c { background: radial-gradient(circle, oklch(0.35 0.08 200 / 45%), transparent 70%); }
+.liquid-orb.orb-d {
+  width: 300px; height: 300px; top: 55%; left: 45%;
+  background: radial-gradient(circle, oklch(0.86 0.1 280 / 55%), transparent 68%);
+  animation-duration: 21s;
+  animation-delay: -3s;
+}
+.dark .liquid-orb.orb-a { background: radial-gradient(circle, oklch(0.45 0.13 230 / 68%), transparent 68%); }
+.dark .liquid-orb.orb-b { background: radial-gradient(circle, oklch(0.42 0.12 260 / 62%), transparent 68%); }
+.dark .liquid-orb.orb-c { background: radial-gradient(circle, oklch(0.4 0.11 200 / 58%), transparent 68%); }
+.dark .liquid-orb.orb-d { background: radial-gradient(circle, oklch(0.38 0.1 280 / 50%), transparent 68%); }
 
 #root, main, header { position: relative; z-index: 1; }
 
@@ -217,17 +230,20 @@ body {
 .glass-empty {
   position: relative;
   isolation: isolate;
-  background-color: oklch(1 0 0 / 16%);
-  border: 1px solid oklch(1 0 0 / 45%);
-  border-top-color: oklch(1 0 0 / 65%);
-  backdrop-filter: blur(34px) saturate(200%) contrast(105%);
-  -webkit-backdrop-filter: blur(34px) saturate(200%) contrast(105%);
+  background-color: oklch(1 0 0 / 22%);
+  border: 1.5px solid oklch(1 0 0 / 55%);
+  border-top-color: oklch(1 0 0 / 80%);
+  border-left-color: oklch(1 0 0 / 65%);
+  backdrop-filter: blur(46px) saturate(220%) contrast(112%) brightness(1.06);
+  -webkit-backdrop-filter: blur(46px) saturate(220%) contrast(112%) brightness(1.06);
   box-shadow:
-    0 1.5px 0 oklch(1 0 0 / 70%) inset,
-    0 -1px 0 oklch(1 0 0 / 18%) inset,
-    0 24px 54px oklch(0.3 0.06 250 / 18%),
-    0 2px 6px oklch(0.3 0.06 250 / 10%);
+    0 2px 0 oklch(1 0 0 / 85%) inset,
+    0 -1.5px 0 oklch(1 0 0 / 25%) inset,
+    0 1px 1px oklch(1 0 0 / 60%) inset,
+    0 30px 64px oklch(0.3 0.08 250 / 24%),
+    0 4px 10px oklch(0.3 0.08 250 / 14%);
   transition: background-color 220ms ease, box-shadow 220ms ease, transform 220ms ease, border-color 220ms ease;
+  overflow: hidden;
 }
 
 .dark .glass-panel,
@@ -238,12 +254,13 @@ body {
 .dark .glass-select,
 .dark .glass-chip,
 .dark .glass-empty {
-  background-color: oklch(1 0 0 / 8%);
-  border-color: oklch(1 0 0 / 20%);
-  border-top-color: oklch(1 0 0 / 28%);
+  background-color: oklch(1 0 0 / 12%);
+  border-color: oklch(1 0 0 / 28%);
+  border-top-color: oklch(1 0 0 / 40%);
+  border-left-color: oklch(1 0 0 / 32%);
   box-shadow:
-    0 1.5px 0 oklch(1 0 0 / 20%) inset,
-    0 24px 54px oklch(0 0 0 / 45%);
+    0 2px 0 oklch(1 0 0 / 30%) inset,
+    0 30px 64px oklch(0 0 0 / 55%);
 }
 
 .glass-panel::before,
@@ -253,8 +270,9 @@ body {
   inset: 0;
   border-radius: inherit;
   background:
-    linear-gradient(135deg, oklch(1 0 0 / 38%), oklch(1 0 0 / 0%) 32%),
-    linear-gradient(315deg, oklch(1 0 0 / 22%), oklch(1 0 0 / 0%) 40%);
+    linear-gradient(135deg, oklch(1 0 0 / 50%), oklch(1 0 0 / 0%) 35%),
+    linear-gradient(315deg, oklch(1 0 0 / 32%), oklch(1 0 0 / 0%) 45%),
+    radial-gradient(circle at 20% 15%, oklch(1 0 0 / 40%), transparent 40%);
   pointer-events: none;
   z-index: 0;
 }
@@ -262,53 +280,59 @@ body {
 .dark .glass-panel::before,
 .dark .glass-card::before {
   background:
-    linear-gradient(135deg, oklch(1 0 0 / 18%), oklch(1 0 0 / 0%) 32%),
-    linear-gradient(315deg, oklch(1 0 0 / 10%), oklch(1 0 0 / 0%) 40%);
+    linear-gradient(135deg, oklch(1 0 0 / 24%), oklch(1 0 0 / 0%) 35%),
+    linear-gradient(315deg, oklch(1 0 0 / 14%), oklch(1 0 0 / 0%) 45%),
+    radial-gradient(circle at 20% 15%, oklch(1 0 0 / 18%), transparent 40%);
 }
 
+/* Sweeping sheen highlight — the animated "liquid" light streak */
 .glass-panel::after,
 .glass-card::after {
   content: "";
   position: absolute;
-  top: 0; left: 8%;
-  width: 40%; height: 1.5px;
-  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 85%), transparent);
+  top: -20%;
+  left: 0;
+  width: 40%;
+  height: 140%;
+  background: linear-gradient(100deg, transparent, oklch(1 0 0 / 55%) 45%, transparent 70%);
   z-index: 0;
   pointer-events: none;
+  animation: sheen-sweep 7s ease-in-out infinite;
+  animation-delay: calc(var(--sheen-delay, 0) * 1s);
 }
 .dark .glass-panel::after,
 .dark .glass-card::after {
-  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 35%), transparent);
+  background: linear-gradient(100deg, transparent, oklch(1 0 0 / 22%) 45%, transparent 70%);
 }
 
 .glass-panel > *, .glass-card > * { position: relative; z-index: 1; }
 
-/* Header — frosted glass over a vivid liquid gradient, high text contrast */
+/* Header — deep frosted liquid glass over a vivid gradient, high text contrast */
 .glass-header {
   position: relative;
   isolation: isolate;
   background-image:
-    linear-gradient(135deg, oklch(0.5 0.17 258 / 92%), oklch(0.44 0.15 210 / 88%) 55%, oklch(0.48 0.16 235 / 90%));
-  backdrop-filter: blur(26px) saturate(200%);
-  -webkit-backdrop-filter: blur(26px) saturate(200%);
-  border-bottom: 1px solid oklch(1 0 0 / 35%);
-  box-shadow: 0 16px 40px oklch(0.3 0.09 250 / 22%);
+    linear-gradient(135deg, oklch(0.46 0.19 258 / 94%), oklch(0.4 0.17 210 / 90%) 50%, oklch(0.44 0.18 235 / 92%));
+  backdrop-filter: blur(40px) saturate(220%) brightness(1.05);
+  -webkit-backdrop-filter: blur(40px) saturate(220%) brightness(1.05);
+  border-bottom: 1.5px solid oklch(1 0 0 / 45%);
+  box-shadow: 0 22px 50px oklch(0.3 0.1 250 / 28%);
   overflow: hidden;
 }
 .glass-header::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, oklch(1 0 0 / 26%), oklch(1 0 0 / 0%) 55%);
+  background: linear-gradient(180deg, oklch(1 0 0 / 34%), oklch(1 0 0 / 0%) 58%);
   pointer-events: none;
   z-index: 0;
 }
 .glass-header::after {
   content: "";
   position: absolute;
-  top: -40%; left: -10%;
-  width: 60%; height: 180%;
-  background: radial-gradient(circle, oklch(1 0 0 / 20%), transparent 65%);
+  top: -50%; left: -15%;
+  width: 70%; height: 200%;
+  background: radial-gradient(circle, oklch(1 0 0 / 28%), transparent 65%);
   pointer-events: none;
   z-index: 0;
 }
@@ -316,43 +340,49 @@ body {
 .glass-header h1,
 .glass-header p {
   color: oklch(0.99 0.002 240);
-  text-shadow: 0 1px 14px oklch(0.2 0.06 250 / 45%), 0 1px 2px oklch(0.15 0.05 250 / 40%);
+  text-shadow: 0 1px 16px oklch(0.2 0.07 250 / 50%), 0 2px 4px oklch(0.15 0.06 250 / 45%);
 }
 
 .glass-btn { cursor: pointer; }
 .glass-btn:hover {
-  background-color: oklch(1 0 0 / 26%);
+  background-color: oklch(1 0 0 / 34%);
   box-shadow:
-    0 1.5px 0 oklch(1 0 0 / 80%) inset,
-    0 28px 58px oklch(0.3 0.06 250 / 22%);
-  transform: translateY(-2px) scale(1.01);
+    0 2px 0 oklch(1 0 0 / 90%) inset,
+    0 34px 68px oklch(0.3 0.08 250 / 28%);
+  transform: translateY(-2px) scale(1.015);
 }
-.dark .glass-btn:hover { background-color: oklch(1 0 0 / 14%); }
+.dark .glass-btn:hover { background-color: oklch(1 0 0 / 20%); }
 
 .glass-btn-primary {
-  background-image: linear-gradient(160deg, oklch(0.64 0.18 250 / 90%), oklch(0.5 0.2 262 / 80%));
-  border-color: oklch(1 0 0 / 45%);
+  background-image: linear-gradient(160deg, oklch(0.66 0.19 250 / 95%), oklch(0.52 0.21 262 / 86%));
+  border-color: oklch(1 0 0 / 55%);
   color: white;
 }
 .glass-btn-primary:hover {
-  background-image: linear-gradient(160deg, oklch(0.68 0.18 250 / 94%), oklch(0.54 0.2 262 / 86%));
-  transform: translateY(-2px) scale(1.01);
+  background-image: linear-gradient(160deg, oklch(0.7 0.19 250 / 98%), oklch(0.56 0.21 262 / 92%));
+  transform: translateY(-2px) scale(1.015);
 }
 
 .glass-field,
 .glass-select {
-  background-color: oklch(1 0 0 / 12%);
+  background-color: oklch(1 0 0 / 18%);
 }
 .dark .glass-field,
 .dark .glass-select {
-  background-color: oklch(1 0 0 / 7%);
+  background-color: oklch(1 0 0 / 10%);
 }
 .glass-field:focus,
 .glass-select:focus {
   outline: none;
-  border-color: oklch(0.64 0.18 250 / 65%);
-  box-shadow: 0 0 0 4px oklch(0.64 0.18 250 / 24%);
+  border-color: oklch(0.66 0.19 250 / 70%);
+  box-shadow: 0 0 0 4px oklch(0.66 0.19 250 / 28%);
 }
 
-.glass-chip { background-color: oklch(1 0 0 / 20%); }
-.glass-empty { background-color: oklch(1 0 0 / 12%); }
+.glass-chip { background-color: oklch(1 0 0 / 28%); }
+.glass-empty { background-color: oklch(1 0 0 / 18%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-orb, .glass-panel::after, .glass-card::after {
+    animation: none !important;
+  }
+}

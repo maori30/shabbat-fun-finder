@@ -334,6 +334,7 @@ function Index() {
       <div className="liquid-orb orb-a" aria-hidden="true" />
       <div className="liquid-orb orb-b" aria-hidden="true" />
       <div className="liquid-orb orb-c" aria-hidden="true" />
+      <div className="liquid-orb orb-d" aria-hidden="true" />
       <header className="glass-header text-primary-foreground rounded-b-[28px]">
         <div className="mx-auto max-w-5xl px-4 py-10">
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">כיף לילדים 🎈</h1>
