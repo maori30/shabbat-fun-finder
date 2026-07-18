@@ -523,10 +523,21 @@ function Index() {
               {googleResults.map((p) => {
                 const dist = origin ? distanceKm(origin, { lat: p.lat, lng: p.lng }) : null;
                 return (
-                  <article key={p.id} className="rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <article key={p.id} className="rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    {p.photoUri ? (
+                      <img
+                        src={p.photoUri}
+                        alt={p.name}
+                        loading="lazy"
+                        className="-m-4 mb-3 h-40 w-[calc(100%+2rem)] object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : null}
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="text-3xl">📍</div>
+                        <div className="text-3xl">{p.emoji}</div>
                         <h2 className="mt-1 text-lg font-bold">{p.name}</h2>
                         <div className="text-sm text-muted-foreground">
                           {p.primaryType ?? "מקום"} {p.rating ? `· ⭐ ${p.rating} (${p.userRatingCount ?? 0})` : ""}
@@ -544,6 +555,9 @@ function Index() {
                         </span>
                       )}
                     </div>
+                    {p.description && (
+                      <p className="mt-2 text-sm text-foreground/80">{p.description}</p>
+                    )}
                     {p.address && <p className="mt-2 text-sm text-muted-foreground">{p.address}</p>}
                     <div className="mt-3 flex flex-wrap gap-2 text-xs">
                       {dist !== null && (

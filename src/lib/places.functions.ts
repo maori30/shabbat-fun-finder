@@ -99,6 +99,9 @@ export type PlaceResult = {
   environment: "ממוזג" | "פתוח" | "משולב" | null;
   ageRange: { min: number; max: number } | null;
   isSoftDemoted?: boolean;
+  description: string | null;
+  photoUri: string | null;
+  emoji: string;
 };
 
 const INDOOR_TYPES = new Set([
@@ -136,6 +139,147 @@ function inferAgeRange(types: string[], name: string): PlaceResult["ageRange"] {
   return null;
 }
 
+
+// Google rarely returns a rich editorial summary for smaller local venues,
+// so we build a short, friendly Hebrew description from the place's type
+// and name when Google's own summary is missing.
+const TYPE_DESCRIPTIONS: Record<string, string> = {
+  amusement_park: "פארק שעשועים עם מתקנים ואטרקציות לכל הגילאים.",
+  amusement_center: "מרכז אטרקציות מקורה עם משחקים ופעילויות לילדים.",
+  water_park: "פארק מים עם מגלשות ובריכות – מושלם לימי חמים.",
+  adventure_sports_center: "מתחם ספורט אתגרי עם מסלולים ופעילויות הרפתקה.",
+  roller_coaster: "רכבת הרים ומתקני שעשועים מהירים.",
+  zoo: "גן חיות עם מגוון בעלי חיים לצפייה ולמידה.",
+  aquarium: "אקווריום עם יצורי ים ותצוגות ימיות.",
+  wildlife_park: "פארק חיות בר לטיול ולצפייה מקרוב בטבע.",
+  wildlife_refuge: "שטח טבע פתוח לצפייה בחיות בר.",
+  botanical_garden: "גן בוטני עם צמחייה ושבילי טיול משפחתיים.",
+  museum: "מוזיאון עם תצוגות ופעילויות מותאמות למשפחות.",
+  planetarium: "מצפה כוכבים והרצאות אסטרונומיה לילדים ומבוגרים.",
+  art_gallery: "גלריית אמנות עם תצוגות מתחלפות.",
+  cultural_center: "מרכז תרבות עם פעילויות והופעות לכל המשפחה.",
+  performing_arts_theater: "תיאטרון עם הצגות ומופעים.",
+  playground: "גן שעשועים פתוח עם מתקני משחק לילדים.",
+  park: "פארק ירוק עם שטחי דשא ומקום למשחק ופיקניק.",
+  national_park: "שמורת טבע לאומית לטיולים משפחתיים.",
+  state_park: "פארק ציבורי גדול עם שטחי טבע ופעילות.",
+  dog_park: "פארק כלבים פתוח.",
+  shopping_mall: "קניון עם חנויות ולעיתים גם פעלטון, קולנוע או אזור משחקים לילדים.",
+  movie_theater: "קולנוע להקרנות סרטים למשפחה.",
+  bowling_alley: "אולם באולינג לבילוי משפחתי.",
+  video_arcade: "חדר משחקי ארקייד וקלפים לילדים ובני נוער.",
+  cafe: "בית קפה, לעיתים עם פינת ישיבה נעימה למשפחות.",
+  coffee_shop: "בית קפה קטן ונעים.",
+  ice_cream_shop: "מקום לגלידה וקינוחים קרים.",
+  bakery: "מאפייה עם מוצרים טריים.",
+  dessert_shop: "חנות קינוחים ומתוקים.",
+  restaurant: "מסעדה עם תפריט משפחתי.",
+  hamburger_restaurant: "מסעדת המבורגרים.",
+  pizza_restaurant: "פיצרייה.",
+  family_restaurant: "מסעדה משפחתית עם תפריט מגוון.",
+  swimming_pool: "בריכת שחייה לבילוי ורחצה משפחתית.",
+  sports_complex: "מתחם ספורט עם מגוון פעילויות.",
+  athletic_field: "מגרש ספורט פתוח.",
+  skateboard_park: "פארק סקייטבורד וגלגיליות.",
+  ice_skating_rink: "פיסטת החלקה על קרח.",
+  library: "ספרייה עם פעילויות וסיפורים לילדים.",
+  community_center: "מרכז קהילתי עם חוגים ופעילויות.",
+  event_venue: "אולם אירועים.",
+  banquet_hall: "אולם לאירועים ושמחות.",
+  tourist_attraction: "אתר תיירות פופולרי לביקור משפחתי.",
+  observation_deck: "מגדל תצפית עם נוף פנורמי.",
+  historical_place: "אתר היסטורי לביקור ולמידה.",
+  cultural_landmark: "אתר תרבותי ומורשת.",
+};
+
+function buildFallbackDescription(types: string[], name: string): string | null {
+  for (const t of types) {
+    if (TYPE_DESCRIPTIONS[t]) return TYPE_DESCRIPTIONS[t];
+  }
+  if (/פעלטון|משחקייה|ג'ימבורי|קידילנד/.test(name)) {
+    return "משחקייה מקורה עם פעילויות וגילאים לילדים.";
+  }
+  if (/טרמפולין/.test(name)) {
+    return "אולם טרמפולינות עם מסלולי אתגר וקפיצות.";
+  }
+  return null;
+}
+
+// Emoji per place type, matching the style already used in the static
+// ATTRACTIONS list (🎢, 🦁, 🎨, etc.) instead of a generic 📍 pin for every
+// Google result.
+const TYPE_EMOJI: Record<string, string> = {
+  amusement_park: "🎢",
+  amusement_center: "🎮",
+  water_park: "🏊",
+  adventure_sports_center: "🧗",
+  roller_coaster: "🎢",
+  zoo: "🦁",
+  aquarium: "🐠",
+  wildlife_park: "🦘",
+  wildlife_refuge: "🦌",
+  botanical_garden: "🌿",
+  museum: "🎨",
+  planetarium: "🔭",
+  art_gallery: "🖼️",
+  cultural_center: "🎭",
+  performing_arts_theater: "🎭",
+  playground: "🛝",
+  park: "🌳",
+  national_park: "🏞️",
+  state_park: "🏞️",
+  dog_park: "🐶",
+  shopping_mall: "🛍️",
+  movie_theater: "🎬",
+  bowling_alley: "🎳",
+  video_arcade: "🕹️",
+  cafe: "☕",
+  coffee_shop: "☕",
+  ice_cream_shop: "🍦",
+  bakery: "🥐",
+  dessert_shop: "🍰",
+  restaurant: "🍽️",
+  hamburger_restaurant: "🍔",
+  pizza_restaurant: "🍕",
+  family_restaurant: "🍽️",
+  swimming_pool: "🏊",
+  sports_complex: "🏟️",
+  athletic_field: "🏃",
+  skateboard_park: "🛹",
+  ice_skating_rink: "⛸️",
+  library: "📚",
+  community_center: "🏛️",
+  event_venue: "🎉",
+  banquet_hall: "🎉",
+  tourist_attraction: "📸",
+  observation_deck: "🔭",
+  historical_place: "🏛️",
+  cultural_landmark: "🏛️",
+  supermarket: "🛒",
+  grocery_store: "🛒",
+  lodging: "🏨",
+  hotel: "🏨",
+  bar: "🍹",
+  night_club: "🎵",
+  gas_station: "⛽",
+};
+
+function pickEmoji(types: string[], name: string): string {
+  for (const t of types) {
+    if (TYPE_EMOJI[t]) return TYPE_EMOJI[t];
+  }
+  if (/פעלטון|משחקייה|ג'ימבורי|קידילנד/.test(name)) return "🤹";
+  if (/טרמפולין/.test(name)) return "🤸";
+  if (/קולנוע|סינמה|Cinema/i.test(name)) return "🎬";
+  if (/גן חיות|ספארי/.test(name)) return "🦁";
+  return "📍";
+}
+
+function buildPhotoUri(photoName: string | undefined, apiKey: string | undefined): string | null {
+  if (!photoName || !apiKey) return null;
+  return `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=640&key=${apiKey}`;
+}
+
 export const searchPlaces = createServerFn({ method: "POST" })
   .inputValidator((data: { lat: number; lng: number; radius: number; keyword?: string; activityMode?: boolean }) => {
     if (typeof data.lat !== "number" || typeof data.lng !== "number") throw new Error("Bad coords");
@@ -168,6 +312,8 @@ export const searchPlaces = createServerFn({ method: "POST" })
       "places.types",
       "places.currentOpeningHours.openNow",
       "places.regularOpeningHours.weekdayDescriptions",
+      "places.editorialSummary",
+      "places.photos",
     ].join(",");
 
     const circle = {
@@ -189,6 +335,8 @@ export const searchPlaces = createServerFn({ method: "POST" })
       types?: string[];
       currentOpeningHours?: { openNow?: boolean };
       regularOpeningHours?: { weekdayDescriptions?: string[] };
+      editorialSummary?: { text?: string };
+      photos?: { name?: string; widthPx?: number; heightPx?: number }[];
     };
 
     async function callGoogle(endpoint: string, body: unknown): Promise<RawPlace[]> {
@@ -286,6 +434,9 @@ export const searchPlaces = createServerFn({ method: "POST" })
         openShabbat,
         environment: inferEnvironment(types, name),
         ageRange: inferAgeRange(types, name),
+        description: p.editorialSummary?.text ?? buildFallbackDescription(types, name),
+        photoUri: buildPhotoUri(p.photos?.[0]?.name, GOOGLE_MAPS_API_KEY),
+        emoji: pickEmoji(types, name),
       };
     });
 
