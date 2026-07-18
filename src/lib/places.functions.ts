@@ -17,7 +17,19 @@ const TYPE_GROUPS: string[][] = [
   ["library", "community_center", "event_venue", "banquet_hall"],
 ];
 
-// Free-text queries in Hebrew to catch places Google mis-categorizes.
+// Focused type groups for "activity mode" — attractions/parks/pools/workshops,
+// no cafes/restaurants/malls/generic venues.
+const ACTIVITY_TYPE_GROUPS: string[][] = [
+  ["amusement_park", "amusement_center", "water_park", "adventure_sports_center", "roller_coaster"],
+  ["zoo", "aquarium", "wildlife_park", "wildlife_refuge", "botanical_garden"],
+  ["museum", "planetarium", "art_gallery", "cultural_center"],
+  ["park", "national_park", "state_park", "playground"],
+  ["tourist_attraction", "observation_deck"],
+  ["swimming_pool", "ice_skating_rink", "skateboard_park", "sports_complex"],
+  ["bowling_alley", "video_arcade", "movie_theater"],
+];
+
+// Free-text queries in Hebrew + English to catch places Google mis-categorizes.
 const TEXT_QUERIES = [
   "משחקייה לילדים",
   "פעלטון",
@@ -29,10 +41,39 @@ const TEXT_QUERIES = [
   "מתאים לילדים",
   "בילוי משפחות",
   "פארק שעשועים לילדים",
+  "גני שעשועים",
+  "מרכז משחקים",
+  "חדר משחקים",
   "סדנאות לילדים",
+  "בריכת שחייה משפחתית",
+  "מוזיאון אינטראקטיבי",
   "Playground",
   "kids activities",
   "family friendly attractions",
+  "soft play",
+  "jump park",
+  "trampoline park",
+  "indoor playground",
+];
+
+// Tighter subset when "activity mode" is on — focus on attractions, not cafes.
+const ACTIVITY_TEXT_QUERIES = [
+  "משחקייה לילדים",
+  "פעלטון",
+  "פארק שעשועים לילדים",
+  "גני שעשועים",
+  "מרכז משחקים",
+  "חדר משחקים",
+  "סדנאות לילדים",
+  "בריכת שחייה משפחתית",
+  "מוזיאון אינטראקטיבי",
+  "אטרקציות לילדים",
+  "פעילות לילדים",
+  "soft play",
+  "jump park",
+  "trampoline park",
+  "indoor playground",
+  "kids workshop",
 ];
 
 export type PlaceResult = {
