@@ -131,13 +131,14 @@ function inferAgeRange(types: string[], name: string): PlaceResult["ageRange"] {
 }
 
 export const searchPlaces = createServerFn({ method: "POST" })
-  .inputValidator((data: { lat: number; lng: number; radius: number; keyword?: string }) => {
+  .inputValidator((data: { lat: number; lng: number; radius: number; keyword?: string; activityMode?: boolean }) => {
     if (typeof data.lat !== "number" || typeof data.lng !== "number") throw new Error("Bad coords");
     return {
       lat: data.lat,
       lng: data.lng,
       radius: Math.min(Math.max(data.radius, 500), 50000),
       keyword: (data.keyword ?? "").slice(0, 100),
+      activityMode: !!data.activityMode,
     };
   })
   .handler(async ({ data }): Promise<{ places: PlaceResult[]; error?: string }> => {
