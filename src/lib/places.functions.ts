@@ -283,12 +283,40 @@ export const searchPlaces = createServerFn({ method: "POST" })
       };
     });
 
-    // Sort by rating*log(count) so the strong family spots float up.
-    places.sort((a, b) => {
-      const sa = (a.rating ?? 0) * Math.log10((a.userRatingCount ?? 0) + 10);
-      const sb = (b.rating ?? 0) * Math.log10((b.userRatingCount ?? 0) + 10);
+    // In activity mode, drop generic businesses (restaurants, cafes, malls, hotels)
+    // that slipped in via free-text queries so results center on real attractions.
+    const EXCLUDE_IN_ACTIVITY = new Set([
+      "restaurant", "hamburger_restaurant", "pizza_restaurant", "family_restaurant",
+      "cafe", "coffee_shop", "bakery", "dessert_shop", "ice_cream_shop",
+      "shopping_mall", "supermarket", "grocery_store", "lodging", "hotel",
+      "bar", "night_club", "gas_station",
+    ]);
+    const ATTRACTION_BOOST = new Set([
+      "amusement_park", "amusement_center", "water_park", "zoo", "aquarium",
+      "museum", "planetarium", "playground", "tourist_attraction",
+      "adventure_sports_center", "roller_coaster", "swimming_pool",
+      "ice_skating_rink", "bowling_alley", "video_arcade",
+    ]);
+
+    let finalPlaces = places;
+    if (data.activityMode) {
+      finalPlaces = places.filter((p) => {
+        // Keep if any type is an attraction; drop if it's purely excluded.
+        const hasAttraction = p.types.some((t) => ATTRACTION_BOOST.has(t));
+        const onlyExcluded = p.types.length > 0 && p.types.every((t) => EXCLUDE_IN_ACTIVITY.has(t));
+        if (onlyExcluded && !hasAttraction) return false;
+        return true;
+      });
+    }
+
+    // Sort by rating*log(count), with a boost for attraction types in activity mode.
+    finalPlaces.sort((a, b) => {
+      const boostA = data.activityMode && a.types.some((t) => ATTRACTION_BOOST.has(t)) ? 1.5 : 1;
+      const boostB = data.activityMode && b.types.some((t) => ATTRACTION_BOOST.has(t)) ? 1.5 : 1;
+      const sa = boostA * (a.rating ?? 0) * Math.log10((a.userRatingCount ?? 0) + 10);
+      const sb = boostB * (b.rating ?? 0) * Math.log10((b.userRatingCount ?? 0) + 10);
       return sb - sa;
     });
 
-    return { places: places.slice(0, 60) };
+    return { places: finalPlaces.slice(0, 60) };
   });
