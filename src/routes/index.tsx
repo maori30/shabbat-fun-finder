@@ -197,6 +197,7 @@ function Index() {
   const [googleResults, setGoogleResults] = useState<PlaceResult[] | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string>("");
+  const [activityMode, setActivityMode] = useState<boolean>(false);
   const searchPlacesFn = useServerFn(searchPlaces);
 
   const runGoogleSearch = async () => {
