@@ -144,18 +144,20 @@
 }
 
 
-/* ===== Liquid Glass overlay (Apple-inspired) ===== */
+/* ===== Liquid Glass overlay v2 (Apple-inspired, higher clarity) ===== */
 body {
-  background:
+  background-color: oklch(0.95 0.015 240);
+  background-image:
     radial-gradient(circle at 12% 15%, oklch(0.97 0.02 250 / 55%), transparent 28%),
     radial-gradient(circle at 88% 8%, oklch(0.82 0.09 230 / 45%), transparent 32%),
     radial-gradient(circle at 75% 90%, oklch(0.86 0.07 200 / 40%), transparent 30%),
-    linear-gradient(180deg, oklch(0.93 0.03 240), oklch(0.97 0.01 240) 45%, oklch(0.985 0.003 240));
+    linear-gradient(180deg, oklch(0.9 0.035 245), oklch(0.96 0.015 240) 45%, oklch(0.985 0.003 240));
   background-attachment: fixed;
 }
 
 .dark body {
-  background:
+  background-color: oklch(0.14 0.015 260);
+  background-image:
     radial-gradient(circle at 12% 12%, oklch(0.32 0.05 250 / 55%), transparent 30%),
     radial-gradient(circle at 85% 10%, oklch(0.28 0.07 230 / 45%), transparent 32%),
     radial-gradient(circle at 70% 92%, oklch(0.25 0.06 210 / 40%), transparent 30%),
@@ -173,14 +175,15 @@ body {
 .glass-empty {
   position: relative;
   isolation: isolate;
-  background: oklch(1 0 0 / 8%);
-  border: 1px solid oklch(1 0 0 / 22%);
-  backdrop-filter: blur(26px) saturate(180%);
-  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  background-color: oklch(1 0 0 / 14%);
+  border: 1px solid oklch(1 0 0 / 38%);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
   box-shadow:
-    0 1px 0 oklch(1 0 0 / 45%) inset,
-    0 18px 44px oklch(0.3 0.05 250 / 10%);
-  transition: background 200ms ease, box-shadow 200ms ease, transform 200ms ease, border-color 200ms ease;
+    0 1px 0 oklch(1 0 0 / 55%) inset,
+    0 -1px 0 oklch(1 0 0 / 15%) inset,
+    0 18px 44px oklch(0.3 0.05 250 / 14%);
+  transition: background-color 200ms ease, box-shadow 200ms ease, transform 200ms ease, border-color 200ms ease;
 }
 
 .dark .glass-panel,
@@ -191,11 +194,11 @@ body {
 .dark .glass-select,
 .dark .glass-chip,
 .dark .glass-empty {
-  background: oklch(1 0 0 / 5%);
-  border-color: oklch(1 0 0 / 12%);
+  background-color: oklch(1 0 0 / 7%);
+  border-color: oklch(1 0 0 / 16%);
   box-shadow:
-    0 1px 0 oklch(1 0 0 / 12%) inset,
-    0 18px 44px oklch(0 0 0 / 35%);
+    0 1px 0 oklch(1 0 0 / 14%) inset,
+    0 18px 44px oklch(0 0 0 / 40%);
 }
 
 .glass-panel::before,
@@ -204,61 +207,86 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(180deg, oklch(1 0 0 / 22%), oklch(1 0 0 / 0%) 42%);
+  background: linear-gradient(180deg, oklch(1 0 0 / 30%), oklch(1 0 0 / 0%) 46%);
   pointer-events: none;
   z-index: 0;
 }
 
 .dark .glass-panel::before,
 .dark .glass-card::before {
-  background: linear-gradient(180deg, oklch(1 0 0 / 10%), oklch(1 0 0 / 0%) 42%);
+  background: linear-gradient(180deg, oklch(1 0 0 / 14%), oklch(1 0 0 / 0%) 46%);
 }
 
 .glass-panel > *, .glass-card > * { position: relative; z-index: 1; }
+
+/* Header keeps its color identity but reads as frosted glass over the gradient */
+.glass-header {
+  position: relative;
+  isolation: isolate;
+  background-image: linear-gradient(135deg, oklch(0.55 0.16 255 / 88%), oklch(0.5 0.14 200 / 78%));
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border-bottom: 1px solid oklch(1 0 0 / 30%);
+  box-shadow: 0 12px 34px oklch(0.3 0.08 250 / 18%);
+}
+.glass-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, oklch(1 0 0 / 22%), oklch(1 0 0 / 0%) 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+.glass-header > * { position: relative; z-index: 1; }
+.glass-header h1,
+.glass-header p {
+  color: oklch(0.99 0.002 240);
+  text-shadow: 0 1px 12px oklch(0.2 0.05 250 / 35%);
+}
 
 .glass-btn {
   cursor: pointer;
 }
 .glass-btn:hover {
-  background: oklch(1 0 0 / 14%);
+  background-color: oklch(1 0 0 / 22%);
   box-shadow:
-    0 1px 0 oklch(1 0 0 / 55%) inset,
-    0 22px 50px oklch(0.3 0.05 250 / 14%);
+    0 1px 0 oklch(1 0 0 / 65%) inset,
+    0 22px 50px oklch(0.3 0.05 250 / 18%);
   transform: translateY(-1px);
 }
 .dark .glass-btn:hover {
-  background: oklch(1 0 0 / 9%);
+  background-color: oklch(1 0 0 / 12%);
 }
 
 .glass-btn-primary {
-  background: linear-gradient(180deg, oklch(0.62 0.17 250 / 78%), oklch(0.5 0.19 260 / 66%));
-  border-color: oklch(1 0 0 / 32%);
+  background-image: linear-gradient(180deg, oklch(0.62 0.17 250 / 85%), oklch(0.5 0.19 260 / 74%));
+  border-color: oklch(1 0 0 / 40%);
   color: white;
 }
 .glass-btn-primary:hover {
-  background: linear-gradient(180deg, oklch(0.66 0.17 250 / 84%), oklch(0.54 0.19 260 / 72%));
+  background-image: linear-gradient(180deg, oklch(0.66 0.17 250 / 90%), oklch(0.54 0.19 260 / 80%));
   transform: translateY(-1px);
 }
 
 .glass-field,
 .glass-select {
-  background: oklch(1 0 0 / 6%);
+  background-color: oklch(1 0 0 / 10%);
 }
 .dark .glass-field,
 .dark .glass-select {
-  background: oklch(1 0 0 / 4%);
+  background-color: oklch(1 0 0 / 6%);
 }
 .glass-field:focus,
 .glass-select:focus {
   outline: none;
-  border-color: oklch(0.62 0.17 250 / 55%);
-  box-shadow: 0 0 0 3px oklch(0.62 0.17 250 / 18%);
+  border-color: oklch(0.62 0.17 250 / 60%);
+  box-shadow: 0 0 0 3px oklch(0.62 0.17 250 / 22%);
 }
 
 .glass-chip {
-  background: oklch(1 0 0 / 10%);
+  background-color: oklch(1 0 0 / 16%);
 }
 
 .glass-empty {
-  background: oklch(1 0 0 / 6%);
+  background-color: oklch(1 0 0 / 10%);
 }

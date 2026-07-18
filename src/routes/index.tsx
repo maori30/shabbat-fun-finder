@@ -331,7 +331,7 @@ function Index() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
-      <header className="glass-panel bg-gradient-to-br from-primary/70 to-accent-foreground/60 text-primary-foreground rounded-b-[28px]">
+      <header className="glass-header text-primary-foreground rounded-b-[28px]">
         <div className="mx-auto max-w-5xl px-4 py-10">
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">כיף לילדים 🎈</h1>
           <p className="mt-2 text-base md:text-lg opacity-90">
