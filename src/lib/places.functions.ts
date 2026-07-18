@@ -23,6 +23,16 @@ const TEXT_QUERIES = [
   "פעלטון",
   "חדר בריחה משפחות",
   "קפה עם פינת ילדים",
+  "פעילות לילדים",
+  "אטרקציות לילדים",
+  "מקומות בילוי לילדים",
+  "מתאים לילדים",
+  "בילוי משפחות",
+  "פארק שעשועים לילדים",
+  "סדנאות לילדים",
+  "Playground",
+  "kids activities",
+  "family friendly attractions",
 ];
 
 export type PlaceResult = {
