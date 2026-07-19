@@ -173,7 +173,7 @@ body {
     radial-gradient(circle at 85% 15%, oklch(0.72 0.22 210 / 90%), transparent 48%),
     radial-gradient(circle at 70% 85%, oklch(0.68 0.24 30 / 85%), transparent 50%),
     radial-gradient(circle at 25% 90%, oklch(0.7 0.23 160 / 85%), transparent 46%),
-    linear-gradient(160deg, oklch(0.58 0.2 265), oklch(0.5 0.22 300) 45%, oklch(0.55 0.21 220));
+    linear-gradient(160deg, oklch(0.5 0.24 265), oklch(0.42 0.26 305) 45%, oklch(0.48 0.24 210));
   background-size: 220% 220%, 200% 200%, 240% 240%, 220% 220%, 100% 100%;
   background-attachment: fixed;
   animation: aurora-shift 24s ease-in-out infinite;
@@ -198,7 +198,6 @@ body {
   z-index: 0;
   filter: blur(6px);
   opacity: 0.95;
-  mix-blend-mode: screen;
   animation: liquid-drift 16s ease-in-out infinite;
 }
 .liquid-orb.orb-a {
