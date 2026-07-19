@@ -203,6 +203,7 @@ function Index() {
   const [googleResults, setGoogleResults] = useState<PlaceResult[] | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string>("");
+  const [expandedSaturdayHours, setExpandedSaturdayHours] = useState<string | null>(null);
   const [activityMode, setActivityMode] = useState<boolean>(false);
   const searchPlacesFn = useServerFn(searchPlaces);
   const geocodeCityFn = useServerFn(geocodeCity);
@@ -661,17 +662,26 @@ function Index() {
                         </div>
                       </div>
                       {p.openShabbat !== null && (
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold shrink-0 ${
+                        <button
+                          type="button"
+                          onClick={() => p.saturdayHours && setExpandedSaturdayHours((current) => current === p.id ? null : p.id)}
+                          aria-expanded={expandedSaturdayHours === p.id}
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold shrink-0 transition-opacity ${
                             p.openShabbat
                               ? "bg-emerald-100 text-emerald-800"
                               : "bg-rose-100 text-rose-800"
-                          }`}
+                          } ${p.saturdayHours ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
+                          title={p.saturdayHours ? "לחצו להצגת שעות שבת" : "שעות מדויקות אינן זמינות"}
                         >
                           {p.openShabbat ? "פתוח בשבת" : "סגור בשבת"}
-                        </span>
+                        </button>
                       )}
                     </div>
+                    {expandedSaturdayHours === p.id && p.saturdayHours && (
+                      <div className="mt-2 text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1">
+                        שעות שבת: <span className="font-semibold text-foreground">🕒 {p.saturdayHours}</span>
+                      </div>
+                    )}
                     {p.description && (
                       <p className="mt-2 text-sm text-foreground/80">{p.description}</p>
                     )}
@@ -709,7 +719,15 @@ function Index() {
                       )}
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+                      {p.saturdayHours ? (
+                        <span className="text-muted-foreground whitespace-nowrap" title="שעות פעילות בשבת">
+                          🕒 {p.saturdayHours}
+                        </span>
+                      ) : <span />}
+                      <span className="text-muted-foreground/70">לחצו על תגית שבת לפירוט</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
                       <a
                         href={p.mapsUri}
                         target="_blank"

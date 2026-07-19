@@ -69,6 +69,7 @@ export type PlaceResult = {
   types: string[];
   openNow: boolean | null;
   openShabbat: boolean | null;
+  saturdayHours: string | null;
   environment: "ממוזג" | "פתוח" | "משולב" | null;
   ageRange: { min: number; max: number } | null;
   isSoftDemoted?: boolean;
@@ -93,6 +94,19 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   const dLng = toRad(lng2 - lng1);
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatTime(hour?: number, minute?: number) {
+  if (hour === undefined || minute === undefined) return null;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function getSaturdayHours(periods?: { open?: { day?: number; hour?: number; minute?: number }; close?: { day?: number; hour?: number; minute?: number } }[]) {
+  const saturday = periods?.find((period) => period.open?.day === 6);
+  if (!saturday?.open) return null;
+  const start = formatTime(saturday.open.hour, saturday.open.minute);
+  const end = saturday.close ? formatTime(saturday.close.hour, saturday.close.minute) : null;
+  return start && end ? `${start}-${end}` : start ? `מ־${start}` : null;
 }
 
 function inferEnvironment(types: string[], name: string): PlaceResult["environment"] {
@@ -305,6 +319,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
       "places.types",
       "places.currentOpeningHours.openNow",
       "places.regularOpeningHours.weekdayDescriptions",
+      "places.regularOpeningHours.periods",
       "places.editorialSummary",
       "places.photos",
     ].join(",");
@@ -327,7 +342,10 @@ export const searchPlaces = createServerFn({ method: "POST" })
       primaryTypeDisplayName?: { text?: string };
       types?: string[];
       currentOpeningHours?: { openNow?: boolean };
-      regularOpeningHours?: { weekdayDescriptions?: string[] };
+      regularOpeningHours?: {
+        weekdayDescriptions?: string[];
+        periods?: { open?: { day?: number; hour?: number; minute?: number }; close?: { day?: number; hour?: number; minute?: number } }[];
+      };
       editorialSummary?: { text?: string };
       photos?: { name?: string; widthPx?: number; heightPx?: number }[];
     };
@@ -406,6 +424,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
       const satLine = weekly.find((d) => d.startsWith("שבת"));
       let openShabbat: boolean | null = null;
       if (satLine) openShabbat = !/סגור/.test(satLine);
+      const saturdayHours = getSaturdayHours(p.regularOpeningHours?.periods);
 
       const name = p.displayName?.text ?? "ללא שם";
       const types = p.types ?? (p.primaryType ? [p.primaryType] : []);
@@ -425,6 +444,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
         types,
         openNow: p.currentOpeningHours?.openNow ?? null,
         openShabbat,
+        saturdayHours,
         environment: inferEnvironment(types, name),
         ageRange: inferAgeRange(types, name),
         description: p.editorialSummary?.text ?? buildFallbackDescription(types, name),
