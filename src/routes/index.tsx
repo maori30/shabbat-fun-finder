@@ -298,6 +298,7 @@ function Index() {
       const effectiveRadius = Math.min(radius, 50);
       const localMatches = ATTRACTIONS
         .filter((a) => {
+          if (showFavOnly && !favorites.includes(a.id)) return false;
           if (shabbatOnly && !a.openShabbat) return false;
           if (env !== "all" && a.environment !== env) return false;
           if (region !== "all" && a.region !== region) return false;
@@ -432,32 +433,7 @@ function Index() {
     });
   };
 
-  const results = useMemo(() => {
-    const list = ATTRACTIONS.filter((a) => {
-      if (showFavOnly && !favorites.includes(a.id)) return false;
-      if (shabbatOnly && !a.openShabbat) return false;
-      if (env !== "all" && a.environment !== env) return false;
-      if (region !== "all" && a.region !== region) return false;
-      if (category !== "all" && a.category !== category) return false;
-      if (age !== "" && (age < a.minAge || age > a.maxAge)) return false;
-      if (query.trim()) {
-        const q = query.trim();
-        if (!(a.name.includes(q) || a.category.includes(q))) return false;
-      }
-      return true;
-    }).map((a) => ({
-      ...a,
-      distance: origin ? distanceKm(origin, { lat: a.lat, lng: a.lng }) : null,
-    }));
-
-    if (origin) {
-      return list
-        .filter((a) => a.distance !== null && a.distance <= radius)
-        .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
-    }
-    return list;
-  }, [query, shabbatOnly, age, env, region, category, origin, radius, showFavOnly, favorites]);
-
+  
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       <div className="liquid-orb orb-a" aria-hidden="true" />
@@ -840,100 +816,11 @@ function Index() {
             )}
           </>
         ) : (
-        <>
-        <div className="mt-4 text-sm text-muted-foreground">
-          נמצאו {results.length} אטרקציות
-        </div>
-
-        <section className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {results.map((a) => (
-            <article key={a.id} className="glass-card rounded-2xl p-4 transition-shadow">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-3xl">{a.emoji}</div>
-                  <h2 className="mt-1 text-lg font-bold">{a.name}</h2>
-                  <div className="text-sm text-muted-foreground">
-                    {a.city} · {a.category}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  <button
-                    onClick={() => toggleFav(a.id)}
-                    aria-label="הוסף למועדפים"
-                    className="text-2xl leading-none hover:scale-110 transition-transform"
-                  >
-                    {favorites.includes(a.id) ? "❤️" : "🤍"}
-                  </button>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      a.openShabbat
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-rose-100 text-rose-800"
-                    }`}
-                  >
-                    {a.openShabbat ? "פתוח בשבת" : "סגור בשבת"}
-                  </span>
-                </div>
-              </div>
-              <p className="mt-2 text-sm">{a.description}</p>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
-                  {a.environment === "ממוזג" ? "❄️ ממוזג" : a.environment === "פתוח" ? "☀️ פתוח" : "🔀 משולב"}
-                </span>
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
-                  👶 גילאי {a.minAge}–{a.maxAge}
-                </span>
-                {a.price ? (
-                  <span className="rounded-full bg-amber-100 text-amber-900 px-2.5 py-1 font-semibold">
-                    🎟️ {a.price}
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
-                    🎟️ מחיר: בדקו באתר
-                  </span>
-                )}
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
-                  📍 {a.region}
-                </span>
-                {a.distance !== null && (
-                  <span className="rounded-full bg-primary/10 text-primary px-2.5 py-1 font-semibold">
-                    📏 {a.distance.toFixed(1)} ק"מ
-                  </span>
-                )}
-                {a.distance !== null && (
-                  <span className="rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 font-semibold">
-                    🚗 ~{Math.max(1, Math.round((a.distance / 60) * 60))} דק'
-                  </span>
-                )}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <a
-                  href={`https://waze.com/ul?ll=${a.lat},${a.lng}&navigate=yes`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-xl bg-sky-600 text-white px-3 py-1.5 font-semibold hover:opacity-90"
-                >
-                  🧭 נווט בוויז
-                </a>
-                <a
-                  href={a.url ?? `https://www.google.com/search?q=${encodeURIComponent(a.name + " " + a.city)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-xl border px-3 py-1.5 font-semibold hover:bg-secondary"
-                >
-                  🔗 {a.url ? "לאתר" : "חיפוש בגוגל"}
-                </a>
-              </div>
-            </article>
-          ))}
-        </section>
-
-        {results.length === 0 && (
-          <div className="glass-empty mt-8 rounded-2xl p-8 text-center text-muted-foreground">
-            לא נמצאו אטרקציות מתאימות. נסו לשנות את הסינון או להגדיל את הרדיוס.
+          <div className="glass-empty mt-8 rounded-2xl p-10 text-center text-muted-foreground">
+            {origin
+              ? "בחרו סינון ולחצו על \"חפש מקומות אמיתיים מ-Google\" כדי להציג תוצאות."
+              : "בחרו עיר או השתמשו במיקום שלכם, ואז לחצו על \"חפש מקומות אמיתיים מ-Google\"."}
           </div>
-        )}
-        </>
         )}
 
 
