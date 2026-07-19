@@ -122,8 +122,6 @@ const ATTRACTIONS: Attraction[] = [
   { id: 78, name: "טיילת נתניה", city: "נתניה", region: "מרכז", category: "טיילת", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "טיילת חוף עם רכבל, מזרקות ומתקנים.", emoji: "🚡", lat: 32.3300, lng: 34.8500 },
   { id: 79, name: "טיילת חוף אשדוד (לידו)", city: "אשדוד", region: "דרום", category: "טיילת", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "טיילת חוף עם מתקני משחק.", emoji: "🏖️", lat: 31.7930, lng: 34.6350 },
   { id: 80, name: "רכבל חיפה - סטלה מאריס", city: "חיפה", region: "צפון", category: "טיילת", openShabbat: true, environment: "משולב", minAge: 2, maxAge: 16, description: "רכבל מהחוף לראש הכרמל.", emoji: "🚠", lat: 32.8280, lng: 34.9700 },
-  { id: 81, name: "הברדקיה", city: "פתח תקווה", region: "מרכז", category: "משחקייה", openShabbat: true, environment: "ממוזג", minAge: 0, maxAge: 6, description: "משחקייה התפתחותית לפעוטות, עם טרמפולינות, בריכת ספוגים, מתחם אתגרי, חוגים וסדנאות.", emoji: "🧸", lat: 32.0914, lng: 34.8858, url: "https://abardakiya.com/", price: "מחיר: בדקו באתר" },
-  { id: 82, name: "פעלטון עופר הקניון הגדול פתח תקווה", city: "פתח תקווה", region: "מרכז", category: "משחקייה", openShabbat: true, environment: "ממוזג", minAge: 0, maxAge: 11, description: "משחקייה בקניון הגדול עם ג'ימבורי, בריכות כדורים, טרמפולינות ומתקנים לילדים.", emoji: "🎠", lat: 32.0898, lng: 34.8844, url: "https://play.pealton.co.il/playgrounds/playgrounds-center/?ContentID=55701", price: "מחיר: בדקו באתר" },
 ];
 
 // Known city centers for "search near city" without geolocation
