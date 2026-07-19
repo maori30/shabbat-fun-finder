@@ -238,12 +238,12 @@ body {
 .glass-empty {
   position: relative;
   isolation: isolate;
-  background-color: oklch(1 0 0 / 14%);
+  background-color: oklch(1 0 0 / 10%);
   border: 1px solid oklch(1 0 0 / 40%);
   border-top-color: oklch(1 0 0 / 88%);
   border-left-color: oklch(1 0 0 / 55%);
   border-bottom-color: oklch(1 0 0 / 22%);
-  backdrop-filter: blur(26px) saturate(200%) brightness(1.08);
+  backdrop-filter: blur(22px) saturate(180%);
   box-shadow:
     0 1.5px 0 oklch(1 0 0 / 95%) inset,
     0 -1px 0 oklch(1 0 0 / 18%) inset,
@@ -285,9 +285,9 @@ body {
   inset: 0;
   border-radius: inherit;
   background:
-    linear-gradient(135deg, oklch(1 0 0 / 55%), oklch(1 0 0 / 0%) 32%),
-    linear-gradient(315deg, oklch(1 0 0 / 22%), oklch(1 0 0 / 0%) 42%),
-    radial-gradient(ellipse at 25% 8%, oklch(1 0 0 / 50%), transparent 50%);
+    linear-gradient(135deg, oklch(1 0 0 / 28%), oklch(1 0 0 / 0%) 40%),
+    linear-gradient(315deg, oklch(1 0 0 / 10%), oklch(1 0 0 / 0%) 45%),
+    radial-gradient(ellipse at 25% 8%, oklch(1 0 0 / 22%), transparent 55%);
   pointer-events: none;
   z-index: 0;
   mix-blend-mode: overlay;
@@ -380,7 +380,7 @@ body {
     0 26px 60px oklch(0.15 0.08 260 / 38%);
   transform: translateY(-2px) scale(1.015);
 }
-.dark .glass-btn:hover { background-color: oklch(1 0 0 / 14%); }
+.dark .glass-btn:hover { background-color: oklch(1 0 0 / 10%); }
 
 .glass-btn-primary {
   background-image: linear-gradient(160deg, oklch(0.68 0.22 258 / 92%), oklch(0.55 0.24 305 / 88%));
