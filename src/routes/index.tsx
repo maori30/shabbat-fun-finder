@@ -685,7 +685,15 @@ function Index() {
                     {p.description && (
                       <p className="mt-2 text-sm text-foreground/80">{p.description}</p>
                     )}
-                    {p.address && <p className="mt-2 text-sm text-muted-foreground">{p.address}</p>}
+                    {p.address && (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {p.address
+                          .replace(/,?\s*ישראל\s*$/u, "")
+                          .replace(/,?\s*\d{5,8}\s*(?=,|$)/gu, "")
+                          .replace(/,\s*,/g, ",")
+                          .trim()}
+                      </p>
+                    )}
                     <div className="mt-3 flex flex-wrap gap-2 text-xs">
                       {dist !== null && (
                         <span className="rounded-full bg-primary/10 text-primary px-2.5 py-1 font-semibold">
