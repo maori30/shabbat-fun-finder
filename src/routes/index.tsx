@@ -724,8 +724,12 @@ function Index() {
                         <span className="text-muted-foreground whitespace-nowrap" title="שעות פתיחה וסגירה היום">
                           🕒 היום {p.todayHours}
                         </span>
+                      ) : (
+                        <span className="text-muted-foreground/70">🕒 שעות: בדקו באתר או ב-Google</span>
+                      )}
+                      {p.saturdayHours ? (
+                        <span className="text-muted-foreground/70">לחצו על תגית שבת לפירוט</span>
                       ) : <span />}
-                      <span className="text-muted-foreground/70">לחצו על תגית שבת לפירוט</span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                       <a

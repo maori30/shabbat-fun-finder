@@ -110,7 +110,10 @@ function getHoursForDay(
   if (!period?.open) return null;
   const start = formatTime(period.open.hour, period.open.minute);
   const end = period.close ? formatTime(period.close.hour, period.close.minute) : null;
-  return start && end ? `${start}-${end}` : start ? `מ־${start}` : null;
+  // Google can return 00:00-00:00 for an all-day/unknown schedule. Do not
+  // present it as a precise operating window.
+  if (!start || !end || (start === "00:00" && end === "00:00")) return null;
+  return `${start}-${end}`;
 }
 
 function israelDayOfWeek() {
@@ -430,10 +433,12 @@ export const searchPlaces = createServerFn({ method: "POST" })
 
     const places: PlaceResult[] = merged.map((p) => {
       const weekly = p.regularOpeningHours?.weekdayDescriptions ?? [];
-      const satLine = weekly.find((d) => d.startsWith("שבת"));
-      let openShabbat: boolean | null = null;
-      if (satLine) openShabbat = !/סגור/.test(satLine);
+      const satLine = weekly.find((d) => /(^|\s)(שבת|Saturday)/i.test(d));
       const saturdayHours = getHoursForDay(p.regularOpeningHours?.periods, 6);
+      // A Saturday period means Google explicitly lists the place as open;
+      // otherwise only show a status when its weekly text explicitly says so.
+      let openShabbat: boolean | null = saturdayHours ? true : null;
+      if (!openShabbat && satLine) openShabbat = !/(סגור|closed)/i.test(satLine);
       const todayHours = getHoursForDay(p.regularOpeningHours?.periods, israelDayOfWeek());
 
       const name = p.displayName?.text ?? "ללא שם";
