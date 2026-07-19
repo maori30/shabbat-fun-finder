@@ -74,6 +74,7 @@ export type PlaceResult = {
   environment: "ממוזג" | "פתוח" | "משולב" | null;
   ageRange: { min: number; max: number } | null;
   isSoftDemoted?: boolean;
+  price: string | null;
   description: string | null;
   photoUri: string | null;
   emoji: string;
@@ -463,6 +464,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
         todayHours,
         environment: inferEnvironment(types, name),
         ageRange: inferAgeRange(types, name),
+        price: null,
         description: p.editorialSummary?.text ?? buildFallbackDescription(types, name),
         photoUri: buildPhotoUri(p.photos?.[0]?.name, GOOGLE_MAPS_API_KEY),
         emoji: pickEmoji(types, name),

@@ -175,6 +175,34 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   "מעלה אדומים": { lat: 31.7714, lng: 35.2969 },
 };
 
+function attractionToPlaceResult(a: Attraction): PlaceResult {
+  return {
+    id: `local-${a.id}`,
+    name: a.name,
+    address: a.city,
+    lat: a.lat,
+    lng: a.lng,
+    rating: null,
+    userRatingCount: null,
+    mapsUri: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.name + " " + a.city)}`,
+    websiteUri: a.url ?? null,
+    primaryType: a.category,
+    primaryTypeId: null,
+    types: [],
+    openNow: null,
+    openShabbat: a.openShabbat,
+    saturdayHours: null,
+    todayHours: null,
+    environment: a.environment,
+    ageRange: { min: a.minAge, max: a.maxAge },
+    isSoftDemoted: false,
+    price: a.price ?? null,
+    description: a.description,
+    photoUri: null,
+    emoji: a.emoji,
+  };
+}
+
 function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const R = 6371;
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -264,7 +292,36 @@ function Index() {
         },
       });
       if (res.error) setGoogleError(res.error);
-      const sortedByDistance = [...res.places].sort((a, b) => {
+
+      // Merge our hand-picked local attractions inside the same radius so the
+      // user only ever sees ONE unified list, sorted purely by distance.
+      const effectiveRadius = Math.min(radius, 50);
+      const localMatches = ATTRACTIONS
+        .filter((a) => {
+          if (shabbatOnly && !a.openShabbat) return false;
+          if (env !== "all" && a.environment !== env) return false;
+          if (region !== "all" && a.region !== region) return false;
+          if (category !== "all" && a.category !== category) return false;
+          if (age !== "" && (age < a.minAge || age > a.maxAge)) return false;
+          if (query.trim()) {
+            const q = query.trim();
+            if (!(a.name.includes(q) || a.category.includes(q))) return false;
+          }
+          return distanceKm(origin, { lat: a.lat, lng: a.lng }) <= effectiveRadius;
+        })
+        .map(attractionToPlaceResult);
+
+      // De-dupe by name+city so a local entry and its Google twin (e.g. same
+      // mall) don't both show up.
+      const seenNames = new Set(
+        res.places.map((p) => `${p.name.trim().toLowerCase()}|${p.address.split(",")[0]?.trim().toLowerCase()}`)
+      );
+      const uniqueLocalMatches = localMatches.filter(
+        (p) => !seenNames.has(`${p.name.trim().toLowerCase()}|${p.address.trim().toLowerCase()}`)
+      );
+
+      const merged = [...res.places, ...uniqueLocalMatches];
+      const sortedByDistance = merged.sort((a, b) => {
         const distanceA = distanceKm(origin, { lat: a.lat, lng: a.lng });
         const distanceB = distanceKm(origin, { lat: b.lat, lng: b.lng });
         const delta = distanceA - distanceB;
@@ -635,7 +692,7 @@ function Index() {
         {googleResults ? (
           <>
             <div className="mt-4 text-sm text-muted-foreground">
-              🌍 תוצאות מ-Google Maps: {googleResults.length} · מסודר מהקרוב לרחוק
+              🌍 תוצאות: {googleResults.length} · מסודר מהקרוב לרחוק
             </div>
             <section className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {googleResults.map((p) => {
@@ -718,6 +775,11 @@ function Index() {
                       {p.ageRange && (
                         <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground font-semibold">
                           👶 גילאי {p.ageRange.min}–{p.ageRange.max}
+                        </span>
+                      )}
+                      {p.price && (
+                        <span className="rounded-full bg-amber-100 text-amber-900 px-2.5 py-1 font-semibold">
+                          🎟️ {p.price}
                         </span>
                       )}
                       {p.isSoftDemoted && (
