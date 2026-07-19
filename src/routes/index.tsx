@@ -203,7 +203,7 @@ function Index() {
   const [googleResults, setGoogleResults] = useState<PlaceResult[] | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string>("");
-  const [expandedSaturdayHours, setExpandedSaturdayHours] = useState<string | null>(null);
+  const [expandedSaturdayDetails, setExpandedSaturdayDetails] = useState<string | null>(null);
   const [activityMode, setActivityMode] = useState<boolean>(false);
   const searchPlacesFn = useServerFn(searchPlaces);
   const geocodeCityFn = useServerFn(geocodeCity);
@@ -661,25 +661,25 @@ function Index() {
                           {p.primaryType ?? "מקום"} {p.rating ? `· ⭐ ${p.rating} (${p.userRatingCount ?? 0})` : ""}
                         </div>
                       </div>
-                      {p.openShabbat !== null && (
+                      {(p.openShabbat !== null || p.saturdayHours) && (
                         <button
                           type="button"
-                          onClick={() => p.saturdayHours && setExpandedSaturdayHours((current) => current === p.id ? null : p.id)}
-                          aria-expanded={expandedSaturdayHours === p.id}
+                          onClick={() => p.saturdayHours && setExpandedSaturdayDetails((current) => current === p.id ? null : p.id)}
+                          aria-expanded={expandedSaturdayDetails === p.id}
                           className={`rounded-full px-2.5 py-1 text-xs font-semibold shrink-0 transition-opacity ${
-                            p.openShabbat
+                            (p.openShabbat || p.saturdayHours)
                               ? "bg-emerald-100 text-emerald-800"
                               : "bg-rose-100 text-rose-800"
                           } ${p.saturdayHours ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
-                          title={p.saturdayHours ? "לחצו להצגת שעות שבת" : "שעות מדויקות אינן זמינות"}
+                          title={p.saturdayHours ? "לחצו להצגת שעות פתיחה וסגירה בשבת" : "שעות מדויקות אינן זמינות"}
                         >
-                          {p.openShabbat ? "פתוח בשבת" : "סגור בשבת"}
+                          {(p.openShabbat || p.saturdayHours) ? "פתוח בשבת" : "סגור בשבת"}
                         </button>
                       )}
                     </div>
-                    {expandedSaturdayHours === p.id && p.saturdayHours && (
+                    {expandedSaturdayDetails === p.id && p.saturdayHours && (
                       <div className="mt-2 text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1">
-                        שעות שבת: <span className="font-semibold text-foreground">🕒 {p.saturdayHours}</span>
+                        שעות פתיחה וסגירה בשבת: <span className="font-semibold text-foreground">🕒 {p.saturdayHours}</span>
                       </div>
                     )}
                     {p.description && (
@@ -720,9 +720,9 @@ function Index() {
                     </div>
 
                     <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-                      {p.saturdayHours ? (
-                        <span className="text-muted-foreground whitespace-nowrap" title="שעות פעילות בשבת">
-                          🕒 {p.saturdayHours}
+                      {p.todayHours ? (
+                        <span className="text-muted-foreground whitespace-nowrap" title="שעות פתיחה וסגירה היום">
+                          🕒 היום {p.todayHours}
                         </span>
                       ) : <span />}
                       <span className="text-muted-foreground/70">לחצו על תגית שבת לפירוט</span>

@@ -70,6 +70,7 @@ export type PlaceResult = {
   openNow: boolean | null;
   openShabbat: boolean | null;
   saturdayHours: string | null;
+  todayHours: string | null;
   environment: "ממוזג" | "פתוח" | "משולב" | null;
   ageRange: { min: number; max: number } | null;
   isSoftDemoted?: boolean;
@@ -101,12 +102,20 @@ function formatTime(hour?: number, minute?: number) {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-function getSaturdayHours(periods?: { open?: { day?: number; hour?: number; minute?: number }; close?: { day?: number; hour?: number; minute?: number } }[]) {
-  const saturday = periods?.find((period) => period.open?.day === 6);
-  if (!saturday?.open) return null;
-  const start = formatTime(saturday.open.hour, saturday.open.minute);
-  const end = saturday.close ? formatTime(saturday.close.hour, saturday.close.minute) : null;
+function getHoursForDay(
+  periods: { open?: { day?: number; hour?: number; minute?: number }; close?: { day?: number; hour?: number; minute?: number } }[] | undefined,
+  day: number,
+) {
+  const period = periods?.find((item) => item.open?.day === day);
+  if (!period?.open) return null;
+  const start = formatTime(period.open.hour, period.open.minute);
+  const end = period.close ? formatTime(period.close.hour, period.close.minute) : null;
   return start && end ? `${start}-${end}` : start ? `מ־${start}` : null;
+}
+
+function israelDayOfWeek() {
+  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Jerusalem", weekday: "short" }).format(new Date());
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekday);
 }
 
 function inferEnvironment(types: string[], name: string): PlaceResult["environment"] {
@@ -424,7 +433,8 @@ export const searchPlaces = createServerFn({ method: "POST" })
       const satLine = weekly.find((d) => d.startsWith("שבת"));
       let openShabbat: boolean | null = null;
       if (satLine) openShabbat = !/סגור/.test(satLine);
-      const saturdayHours = getSaturdayHours(p.regularOpeningHours?.periods);
+      const saturdayHours = getHoursForDay(p.regularOpeningHours?.periods, 6);
+      const todayHours = getHoursForDay(p.regularOpeningHours?.periods, israelDayOfWeek());
 
       const name = p.displayName?.text ?? "ללא שם";
       const types = p.types ?? (p.primaryType ? [p.primaryType] : []);
@@ -445,6 +455,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
         openNow: p.currentOpeningHours?.openNow ?? null,
         openShabbat,
         saturdayHours,
+        todayHours,
         environment: inferEnvironment(types, name),
         ageRange: inferAgeRange(types, name),
         description: p.editorialSummary?.text ?? buildFallbackDescription(types, name),
