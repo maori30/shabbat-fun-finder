@@ -363,10 +363,7 @@ function Index() {
     }
   };
 
-  const clearGoogle = () => {
-    setGoogleResults(null);
-    setGoogleError("");
-  };
+  
 
   useEffect(() => {
     try {
@@ -438,7 +435,7 @@ function Index() {
 
   const selectRecentCity = (item: { cityName: string; result: { lat: number; lng: number; label: string } }) => {
     setOrigin(item.result);
-    setNearCity("");
+    setNearCity(CITY_COORDS[item.cityName] ? item.cityName : "");
     setGeoStatus("");
     addRecentCity(item.cityName, item.result);
   };
@@ -635,14 +632,6 @@ function Index() {
               >
                 {googleLoading ? "מחפש..." : "🌍 חפש מקומות אמיתיים מ-Google"}
               </button>
-              {googleResults && (
-                <button
-                  onClick={clearGoogle}
-                  className="glass-btn rounded-2xl px-3 py-2 text-sm"
-                >
-                  חזור לרשימה שלנו
-                </button>
-              )}
               <label className="glass-chip inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm cursor-pointer">
                 <input
                   type="checkbox"
