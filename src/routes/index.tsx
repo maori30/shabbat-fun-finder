@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
-import { searchPlaces, geocodeCity, type PlaceResult } from "@/lib/places.functions";
+import { searchPlaces, type PlaceResult } from "@/lib/places.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -130,47 +130,97 @@ const CATEGORIES = Array.from(new Set(ATTRACTIONS.map((a) => a.category))).sort(
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   "ירושלים": { lat: 31.7683, lng: 35.2137 },
   "תל אביב": { lat: 32.0853, lng: 34.7818 },
-  "חיפה": { lat: 32.7940, lng: 34.9896 },
-  "ראשון לציון": { lat: 31.9730, lng: 34.7925 },
-  "רמת גן": { lat: 32.0684, lng: 34.8248 },
+  "חיפה": { lat: 32.794, lng: 34.9896 },
+  "ראשון לציון": { lat: 31.973, lng: 34.7925 },
+  "פתח תקווה": { lat: 32.0878, lng: 34.8878 },
+  "אשדוד": { lat: 31.8014, lng: 34.6435 },
+  "נתניה": { lat: 32.3215, lng: 34.8532 },
+  "באר שבע": { lat: 31.2518, lng: 34.7913 },
   "בני ברק": { lat: 32.0807, lng: 34.8338 },
   "חולון": { lat: 32.0158, lng: 34.7874 },
-  "בת ים": { lat: 32.0231, lng: 34.7503 },
-  "גבעתיים": { lat: 32.0719, lng: 34.8103 },
-  "רמת השרון": { lat: 32.1462, lng: 34.8404 },
-  "פתח תקווה": { lat: 32.0878, lng: 34.8878 },
-  "ראש העין": { lat: 32.0956, lng: 34.9581 },
-  "גבעת שמואל": { lat: 32.0778, lng: 34.8500 },
-  "אור יהודה": { lat: 32.0294, lng: 34.8536 },
-  "יהוד": { lat: 32.0342, lng: 34.8828 },
-  "נתניה": { lat: 32.3215, lng: 34.8532 },
-  "הרצליה": { lat: 32.1663, lng: 34.8438 },
-  "רעננה": { lat: 32.1847, lng: 34.8708 },
-  "כפר סבא": { lat: 32.1750, lng: 34.9070 },
-  "הוד השרון": { lat: 32.1500, lng: 34.8886 },
-  "מודיעין": { lat: 31.8969, lng: 35.0104 },
-  "רחובות": { lat: 31.8947, lng: 34.8094 },
-  "נס ציונה": { lat: 31.9294, lng: 34.7994 },
-  "רמלה": { lat: 31.9293, lng: 34.8666 },
-  "לוד": { lat: 31.9516, lng: 34.8886 },
-  "אשדוד": { lat: 31.8014, lng: 34.6435 },
+  "רמת גן": { lat: 32.0684, lng: 34.8248 },
   "אשקלון": { lat: 31.6688, lng: 34.5715 },
-  "קרית גת": { lat: 31.6100, lng: 34.7642 },
-  "באר שבע": { lat: 31.2518, lng: 34.7913 },
-  "דימונה": { lat: 31.0688, lng: 35.0327 },
-  "אילת": { lat: 29.5581, lng: 34.9482 },
-  "טבריה": { lat: 32.7922, lng: 35.5312 },
-  "צפת": { lat: 32.9646, lng: 35.4960 },
-  "כרמיאל": { lat: 32.9186, lng: 35.2952 },
-  "עכו": { lat: 32.9281, lng: 35.0820 },
-  "נהריה": { lat: 33.0100, lng: 35.0980 },
-  "קרית שמונה": { lat: 33.2075, lng: 35.5698 },
+  "רחובות": { lat: 31.8947, lng: 34.8094 },
+  "בת ים": { lat: 32.0231, lng: 34.7503 },
+  "בית שמש": { lat: 31.7477, lng: 34.986 },
+  "כפר סבא": { lat: 32.175, lng: 34.907 },
+  "הרצליה": { lat: 32.1663, lng: 34.8438 },
+  "חדרה": { lat: 32.4341, lng: 34.9196 },
+  "מודיעין-מכבים-רעות": { lat: 31.8969, lng: 35.0104 },
   "נצרת": { lat: 32.7021, lng: 35.2978 },
+  "רעננה": { lat: 32.1847, lng: 34.8708 },
+  "רמלה": { lat: 31.9293, lng: 34.8666 },
+  "רמת השרון": { lat: 32.1462, lng: 34.8404 },
+  "נצרת עילית": { lat: 32.7018, lng: 35.3211 },
+  "הוד השרון": { lat: 32.15, lng: 34.8886 },
+  "גבעתיים": { lat: 32.0719, lng: 34.8103 },
+  "קריית אתא": { lat: 32.8098, lng: 35.1104 },
+  "נהריה": { lat: 33.01, lng: 35.098 },
+  "אור יהודה": { lat: 32.0294, lng: 34.8536 },
   "עפולה": { lat: 32.6078, lng: 35.2897 },
-  "בית שאן": { lat: 32.4970, lng: 35.4967 },
-  "בית שמש": { lat: 31.7477, lng: 34.9860 },
-  "אריאל": { lat: 32.1044, lng: 35.1731 },
+  "רהט": { lat: 31.39, lng: 34.7642 },
+  "קריית גת": { lat: 31.61, lng: 34.7642 },
+  "אילת": { lat: 29.5581, lng: 34.9482 },
+  "עכו": { lat: 32.9281, lng: 35.082 },
+  "קריית מוצקין": { lat: 32.8367, lng: 35.0803 },
   "מעלה אדומים": { lat: 31.7714, lng: 35.2969 },
+  "אריאל": { lat: 32.1044, lng: 35.1731 },
+  "טבריה": { lat: 32.7922, lng: 35.5312 },
+  "כרמיאל": { lat: 32.9186, lng: 35.2952 },
+  "יבנה": { lat: 31.8781, lng: 34.7392 },
+  "טירת כרמל": { lat: 32.7614, lng: 34.9722 },
+  "שפרעם": { lat: 32.8058, lng: 35.1697 },
+  "נס ציונה": { lat: 31.9294, lng: 34.7994 },
+  "דימונה": { lat: 31.0688, lng: 35.0327 },
+  "סחנין": { lat: 32.8642, lng: 35.2989 },
+  "יהוד-מונוסון": { lat: 32.0342, lng: 34.8828 },
+  "קריית ים": { lat: 32.8492, lng: 35.0692 },
+  "קריית מלאכי": { lat: 31.7297, lng: 34.7469 },
+  "מגדל העמק": { lat: 32.6767, lng: 35.2419 },
+  "אום אל-פחם": { lat: 32.5192, lng: 35.1544 },
+  "קריית ביאליק": { lat: 32.8378, lng: 35.0864 },
+  "צפת": { lat: 32.9646, lng: 35.496 },
+  "נתיבות": { lat: 31.4231, lng: 34.5928 },
+  "אופקים": { lat: 31.3153, lng: 34.6208 },
+  "טירה": { lat: 32.2333, lng: 34.95 },
+  "רמת ישי": { lat: 32.7, lng: 35.1917 },
+  "בית שאן": { lat: 32.497, lng: 35.4967 },
+  "כפר יונה": { lat: 32.3167, lng: 34.9333 },
+  "מזכרת בתיה": { lat: 31.8347, lng: 34.8558 },
+  "עראבה": { lat: 32.8517, lng: 35.3383 },
+  "טמרה": { lat: 32.8497, lng: 35.1972 },
+  "אבן יהודה": { lat: 32.2667, lng: 34.8833 },
+  "גני תקווה": { lat: 32.0667, lng: 34.85 },
+  "כפר קאסם": { lat: 32.1136, lng: 34.9761 },
+  "שוהם": { lat: 31.9994, lng: 34.9481 },
+  "אלעד": { lat: 32.05, lng: 34.95 },
+  "בית דגן": { lat: 32.0044, lng: 34.8256 },
+  "מבשרת ציון": { lat: 31.7975, lng: 35.15 },
+  "גדרה": { lat: 31.8125, lng: 34.7778 },
+  "פרדס חנה-כרכור": { lat: 32.4739, lng: 34.9711 },
+  "נשר": { lat: 32.7708, lng: 35.0439 },
+  "קריית אונו": { lat: 32.0625, lng: 34.8578 },
+  "זכרון יעקב": { lat: 32.5719, lng: 34.95 },
+  "בנימינה-גבעת עדה": { lat: 32.5169, lng: 34.95 },
+  "ראש העין": { lat: 32.0956, lng: 34.9581 },
+  "גבעת שמואל": { lat: 32.0778, lng: 34.85 },
+  "מודיעין עילית": { lat: 31.9328, lng: 35.0417 },
+  "ביתר עילית": { lat: 31.6989, lng: 35.1075 },
+  "קצרין": { lat: 32.9878, lng: 35.6889 },
+  "מעלות-תרשיחא": { lat: 33.0197, lng: 35.2739 },
+  "ירוחם": { lat: 30.9903, lng: 34.9269 },
+  "שדרות": { lat: 31.5236, lng: 34.5967 },
+  "קריית שמונה": { lat: 33.2075, lng: 35.5698 },
+  "מגדל": { lat: 32.8781, lng: 35.5019 },
+  "אור עקיבא": { lat: 32.5083, lng: 34.9167 },
+  "פרדסיה": { lat: 32.2547, lng: 34.9364 },
+  "כוכב יאיר": { lat: 32.1889, lng: 34.9633 },
+  "אזור": { lat: 32.0225, lng: 34.8 },
+  "קדימה-צורן": { lat: 32.2725, lng: 34.9142 },
+  "תל מונד": { lat: 32.25, lng: 34.9167 },
+  "לוד": { lat: 31.9516, lng: 34.8886 },
+  "קרית גת": { lat: 31.61, lng: 34.7642 },
+  "מודיעין": { lat: 31.8969, lng: 35.0104 },
 };
 
 function attractionToPlaceResult(a: Attraction): PlaceResult {
@@ -232,9 +282,6 @@ function Index() {
   const [expandedSaturdayDetails, setExpandedSaturdayDetails] = useState<string | null>(null);
   const [activityMode, setActivityMode] = useState<boolean>(false);
   const searchPlacesFn = useServerFn(searchPlaces);
-  const geocodeCityFn = useServerFn(geocodeCity);
-  const [freeCityInput, setFreeCityInput] = useState<string>("");
-  const [cityLookupStatus, setCityLookupStatus] = useState<string>("");
   const [recentCitySearches, setRecentCitySearches] = useState<
     { cityName: string; result: { lat: number; lng: number; label: string } }[]
   >([]);
@@ -248,28 +295,6 @@ function Index() {
       } catch {}
       return next;
     });
-  };
-
-  const searchAnyCity = async (cityInput: string) => {
-    const trimmed = cityInput.trim();
-    if (!trimmed) return;
-    setCityLookupStatus("מחפש עיר...");
-    try {
-      const result = await geocodeCityFn({ data: { cityName: trimmed } });
-      if (result) {
-        setOrigin(result);
-        setNearCity("");
-        setGeoStatus("");
-        setCityLookupStatus("");
-        setFreeCityInput(trimmed);
-        addRecentCity(trimmed, result);
-      } else {
-        setCityLookupStatus("לא נמצאה עיר כזו, נסו שם מלא יותר");
-      }
-    } catch (e) {
-      setCityLookupStatus("שגיאה בחיפוש העיר");
-      console.error(e);
-    }
   };
 
   const runGoogleSearch = async () => {
@@ -375,7 +400,7 @@ function Index() {
   const toggleFav = (id: number) =>
     setFavorites((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
 
-  const cityNames = useMemo(() => Object.keys(CITY_COORDS), []);
+  const cityNames = useMemo(() => Object.keys(CITY_COORDS).sort((a, b) => a.localeCompare(b, "he")), []);
 
   const useMyLocation = () => {
     if (!("geolocation" in navigator)) {
@@ -399,7 +424,6 @@ function Index() {
     if (city && CITY_COORDS[city]) {
       const result = { ...CITY_COORDS[city], label: city };
       setOrigin(result);
-      setFreeCityInput("");
       addRecentCity(city, result);
     } else {
       setOrigin(null);
@@ -410,13 +434,11 @@ function Index() {
     setOrigin(null);
     setNearCity("");
     setGeoStatus("");
-    setFreeCityInput("");
   };
 
   const selectRecentCity = (item: { cityName: string; result: { lat: number; lng: number; label: string } }) => {
     setOrigin(item.result);
     setNearCity("");
-    setFreeCityInput(item.cityName);
     setGeoStatus("");
     addRecentCity(item.cityName, item.result);
   };
@@ -542,30 +564,7 @@ function Index() {
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
-              <div className="flex items-center gap-1">
-                <input
-                  value={freeCityInput}
-                  onChange={(e) => setFreeCityInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      searchAnyCity(freeCityInput);
-                    }
-                  }}
-                  placeholder="או הקלידו כל עיר בישראל..."
-                  className="glass-field rounded-2xl px-3 py-2 text-sm w-40"
-                />
-                <button
-                  onClick={() => searchAnyCity(freeCityInput)}
-                  className="glass-btn rounded-2xl px-2 py-2 text-sm whitespace-nowrap"
-                >
-                  🔎 חפש עיר
-                </button>
-              </div>
-              {cityLookupStatus && (
-                <span className="text-xs text-muted-foreground">{cityLookupStatus}</span>
-              )}
-              
+
               <div className="flex items-center gap-2 flex-1">
                 <label className="text-sm whitespace-nowrap">רדיוס: {radius} ק"מ</label>
                 <input
