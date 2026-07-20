@@ -638,9 +638,24 @@ function Index() {
               <button
                 onClick={runGoogleSearch}
                 disabled={googleLoading}
-                className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                className="glass-btn-primary rounded-2xl px-6 py-3 text-base font-bold shadow-lg shadow-primary/30 hover:scale-[1.03] active:scale-[0.98] transition-transform disabled:opacity-70 disabled:hover:scale-100 inline-flex items-center gap-2"
               >
-                {googleLoading ? "מחפש..." : "🌍 חפש מקומות אמיתיים מ-Google"}
+                {googleLoading ? (
+                  <>
+                    <svg
+                      className="h-5 w-5 animate-spin"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-90" fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2z" />
+                    </svg>
+                    מחפש אטרקציות...
+                  </>
+                ) : (
+                  <>🔎 חפש אטרקציות בגוגל</>
+                )}
               </button>
               <label className="glass-chip inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm cursor-pointer">
                 <input
@@ -661,7 +676,20 @@ function Index() {
           )}
         </section>
 
-        {googleResults ? (
+        {googleLoading && !googleResults ? (
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 text-muted-foreground">
+            <svg
+              className="h-10 w-10 animate-spin text-primary"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-90" fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2z" />
+            </svg>
+            <span className="text-sm font-medium">מחפשים אטרקציות בגוגל בשבילכם...</span>
+          </div>
+        ) : googleResults ? (
           <>
             <div className="mt-4 text-sm text-muted-foreground">
               🌍 תוצאות: {googleResults.length} · מסודר מהקרוב לרחוק
@@ -814,8 +842,8 @@ function Index() {
         ) : (
           <div className="glass-empty mt-8 rounded-2xl p-10 text-center text-muted-foreground">
             {origin
-              ? "בחרו סינון ולחצו על \"חפש מקומות אמיתיים מ-Google\" כדי להציג תוצאות."
-              : "בחרו עיר או השתמשו במיקום שלכם, ואז לחצו על \"חפש מקומות אמיתיים מ-Google\"."}
+              ? "בחרו סינון ולחצו על \"חפש אטרקציות בגוגל\" כדי להציג תוצאות."
+              : "בחרו עיר או השתמשו במיקום שלכם, ואז לחצו על \"חפש אטרקציות בגוגל\"."}
           </div>
         )}
 
