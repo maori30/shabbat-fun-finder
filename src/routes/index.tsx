@@ -274,6 +274,7 @@ function Index() {
   const [radius, setRadius] = useState<number>(30);
   const [origin, setOrigin] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [geoStatus, setGeoStatus] = useState<string>("");
+  const [didAutoLocate, setDidAutoLocate] = useState(false);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showFavOnly, setShowFavOnly] = useState(false);
   const [googleResults, setGoogleResults] = useState<PlaceResult[] | null>(null);
@@ -394,14 +395,20 @@ function Index() {
     } catch {}
   }, [favorites]);
 
+  useEffect(() => {
+    if (didAutoLocate || origin) return;
+    setDidAutoLocate(true);
+    useMyLocation(true);
+  }, [didAutoLocate, origin]);
+
   const toggleFav = (id: number) =>
     setFavorites((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
 
   const cityNames = useMemo(() => Object.keys(CITY_COORDS).sort((a, b) => a.localeCompare(b, "he")), []);
 
-  const useMyLocation = () => {
+  const useMyLocation = (silent = false) => {
     if (!("geolocation" in navigator)) {
-      setGeoStatus("הדפדפן לא תומך במיקום");
+      if (!silent) setGeoStatus("הדפדפן לא תומך במיקום");
       return;
     }
     setGeoStatus("מאתר מיקום...");
@@ -411,7 +418,10 @@ function Index() {
         setNearCity("");
         setGeoStatus("");
       },
-      () => setGeoStatus("לא הצלחנו לאתר את המיקום"),
+      () => {
+        if (!silent) setGeoStatus("לא הצלחנו לאתר את המיקום");
+        else setGeoStatus("");
+      },
       { timeout: 8000 }
     );
   };
