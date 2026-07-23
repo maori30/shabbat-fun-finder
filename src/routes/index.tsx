@@ -483,7 +483,7 @@ function Index() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="חיפוש לפי שם או קטגוריה"
-              className="w-full rounded-xl border bg-background px-4 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
+              className="glass-field w-full rounded-xl px-4 py-3 text-base"
             />
             <div className="flex gap-2">
               <input
@@ -493,12 +493,12 @@ function Index() {
                 value={age}
                 onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
                 placeholder="גיל הילד"
-                className="w-full rounded-xl border bg-background px-4 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
+                className="glass-field w-full rounded-xl px-4 py-3 text-base"
               />
               <select
                 value={env}
                 onChange={(e) => setEnv(e.target.value as typeof env)}
-                className="rounded-xl border bg-background px-3 py-3 text-base"
+                className="glass-select rounded-xl px-3 py-3 text-base"
               >
                 <option value="all">סביבה</option>
                 <option value="ממוזג">ממוזג</option>
@@ -508,7 +508,7 @@ function Index() {
               <select
                 value={region}
                 onChange={(e) => setRegion(e.target.value as typeof region)}
-                className="rounded-xl border bg-background px-3 py-3 text-base"
+                className="glass-select rounded-xl px-3 py-3 text-base"
               >
                 <option value="all">אזור</option>
                 <option value="צפון">צפון</option>
