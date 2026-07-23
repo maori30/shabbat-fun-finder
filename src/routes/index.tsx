@@ -555,7 +555,7 @@ function Index() {
             <div className="text-sm font-semibold mb-2">🔎 חיפוש לפי קרבה אליי</div>
             <div className="flex flex-col md:flex-row gap-2 md:items-center">
               <button
-                onClick={useMyLocation}
+                onClick={() => useMyLocation()}
                 className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-medium"
               >
                 📍 השתמש במיקום שלי
