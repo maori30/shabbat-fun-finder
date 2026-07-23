@@ -382,7 +382,7 @@ function Index() {
           setRecentCitySearches(savedList);
           const mostRecent = savedList[0];
           if (mostRecent?.result?.lat && mostRecent?.result?.lng) {
-            setFreeCityInput(mostRecent.cityName);
+            setNearCity(CITY_COORDS[mostRecent.cityName] ? mostRecent.cityName : "");
             setOrigin(mostRecent.result);
           }
         }
