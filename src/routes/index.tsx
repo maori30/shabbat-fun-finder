@@ -806,7 +806,7 @@ function Index() {
                         href={p.mapsUri}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-xl bg-blue-600 text-white px-3 py-1.5 font-semibold hover:opacity-90"
+                        className="glass-link glass-link-maps"
                       >
                         🗺️ פתח ב-Google Maps
                       </a>
@@ -814,7 +814,7 @@ function Index() {
                         href={`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-xl bg-sky-600 text-white px-3 py-1.5 font-semibold hover:opacity-90"
+                        className="glass-link glass-link-waze"
                       >
                         🧭 וויז
                       </a>
@@ -823,7 +823,7 @@ function Index() {
                           href={p.websiteUri}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-xl border px-3 py-1.5 font-semibold hover:bg-secondary"
+                          className="glass-link"
                         >
                           🔗 אתר
                         </a>
