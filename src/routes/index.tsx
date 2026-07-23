@@ -753,37 +753,37 @@ function Index() {
                     )}
                     <div className="mt-3 flex flex-wrap gap-2 text-xs">
                       {dist !== null && (
-                        <span className="rounded-full bg-primary/10 text-primary px-2.5 py-1 font-semibold">
+                        <span className="glass-badge-info">
                           📏 {dist.toFixed(1)} ק"מ
                         </span>
                       )}
                       {dist !== null && (
-                        <span className="rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 font-semibold">
+                        <span className="glass-badge-warning">
                           🚗 ~{Math.max(1, Math.round(dist))} דק'
                         </span>
                       )}
                       {p.openNow !== null && (
-                        <span className={`rounded-full px-2.5 py-1 font-semibold ${p.openNow ? "bg-emerald-100 text-emerald-800" : "bg-gray-200 text-gray-700"}`}>
+                        <span className={p.openNow ? "glass-badge-success" : "glass-badge-neutral"}>
                           {p.openNow ? "🟢 פתוח עכשיו" : "⚫ סגור עכשיו"}
                         </span>
                       )}
                       {p.environment && (
-                        <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground font-semibold">
+                        <span className="glass-badge">
                           {p.environment === "ממוזג" ? "❄️ ממוזג" : p.environment === "פתוח" ? "☀️ פתוח" : "🔀 משולב"}
                         </span>
                       )}
                       {p.ageRange && (
-                        <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground font-semibold">
+                        <span className="glass-badge">
                           👶 גילאי {p.ageRange.min}–{p.ageRange.max}
                         </span>
                       )}
                       {p.price && (
-                        <span className="rounded-full bg-amber-100 text-amber-900 px-2.5 py-1 font-semibold">
+                        <span className="glass-badge-warning">
                           🎟️ {p.price}
                         </span>
                       )}
                       {p.isSoftDemoted && (
-                        <span className="rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 font-semibold">
+                        <span className="glass-badge-warning">
                           ⚠️ בדקו שעות אטרקציה פנימית (פעלטון/קולנוע)
                         </span>
                       )}
