@@ -723,10 +723,10 @@ function Index() {
                           type="button"
                           onClick={() => p.saturdayHours && setExpandedSaturdayDetails((current) => current === p.id ? null : p.id)}
                           aria-expanded={expandedSaturdayDetails === p.id}
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold shrink-0 transition-opacity ${
+                          className={`shrink-0 transition-opacity ${
                             (p.openShabbat || p.saturdayHours)
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-rose-100 text-rose-800"
+                              ? "glass-badge-success"
+                              : "glass-badge-danger"
                           } ${p.saturdayHours ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
                           title={p.saturdayHours ? "לחצו להצגת שעות פתיחה וסגירה בשבת" : "שעות מדויקות אינן זמינות"}
                         >
