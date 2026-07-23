@@ -382,7 +382,7 @@ function Index() {
           setRecentCitySearches(savedList);
           const mostRecent = savedList[0];
           if (mostRecent?.result?.lat && mostRecent?.result?.lng) {
-            setFreeCityInput(mostRecent.cityName);
+            setNearCity(CITY_COORDS[mostRecent.cityName] ? mostRecent.cityName : "");
             setOrigin(mostRecent.result);
           }
         }
@@ -483,7 +483,7 @@ function Index() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="חיפוש לפי שם או קטגוריה"
-              className="w-full rounded-xl border bg-background px-4 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
+              className="glass-field w-full rounded-xl px-4 py-3 text-base"
             />
             <div className="flex gap-2">
               <input
@@ -493,12 +493,12 @@ function Index() {
                 value={age}
                 onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
                 placeholder="גיל הילד"
-                className="w-full rounded-xl border bg-background px-4 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
+                className="glass-field w-full rounded-xl px-4 py-3 text-base"
               />
               <select
                 value={env}
                 onChange={(e) => setEnv(e.target.value as typeof env)}
-                className="rounded-xl border bg-background px-3 py-3 text-base"
+                className="glass-select rounded-xl px-3 py-3 text-base"
               >
                 <option value="all">סביבה</option>
                 <option value="ממוזג">ממוזג</option>
@@ -508,7 +508,7 @@ function Index() {
               <select
                 value={region}
                 onChange={(e) => setRegion(e.target.value as typeof region)}
-                className="rounded-xl border bg-background px-3 py-3 text-base"
+                className="glass-select rounded-xl px-3 py-3 text-base"
               >
                 <option value="all">אזור</option>
                 <option value="צפון">צפון</option>
@@ -555,7 +555,7 @@ function Index() {
             <div className="text-sm font-semibold mb-2">🔎 חיפוש לפי קרבה אליי</div>
             <div className="flex flex-col md:flex-row gap-2 md:items-center">
               <button
-                onClick={useMyLocation}
+                onClick={() => useMyLocation()}
                 className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-medium"
               >
                 📍 השתמש במיקום שלי
@@ -723,10 +723,10 @@ function Index() {
                           type="button"
                           onClick={() => p.saturdayHours && setExpandedSaturdayDetails((current) => current === p.id ? null : p.id)}
                           aria-expanded={expandedSaturdayDetails === p.id}
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold shrink-0 transition-opacity ${
+                          className={`shrink-0 transition-opacity ${
                             (p.openShabbat || p.saturdayHours)
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-rose-100 text-rose-800"
+                              ? "glass-badge-success"
+                              : "glass-badge-danger"
                           } ${p.saturdayHours ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
                           title={p.saturdayHours ? "לחצו להצגת שעות פתיחה וסגירה בשבת" : "שעות מדויקות אינן זמינות"}
                         >
@@ -753,37 +753,37 @@ function Index() {
                     )}
                     <div className="mt-3 flex flex-wrap gap-2 text-xs">
                       {dist !== null && (
-                        <span className="rounded-full bg-primary/10 text-primary px-2.5 py-1 font-semibold">
+                        <span className="glass-badge-info">
                           📏 {dist.toFixed(1)} ק"מ
                         </span>
                       )}
                       {dist !== null && (
-                        <span className="rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 font-semibold">
+                        <span className="glass-badge-warning">
                           🚗 ~{Math.max(1, Math.round(dist))} דק'
                         </span>
                       )}
                       {p.openNow !== null && (
-                        <span className={`rounded-full px-2.5 py-1 font-semibold ${p.openNow ? "bg-emerald-100 text-emerald-800" : "bg-gray-200 text-gray-700"}`}>
+                        <span className={p.openNow ? "glass-badge-success" : "glass-badge-neutral"}>
                           {p.openNow ? "🟢 פתוח עכשיו" : "⚫ סגור עכשיו"}
                         </span>
                       )}
                       {p.environment && (
-                        <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground font-semibold">
+                        <span className="glass-badge">
                           {p.environment === "ממוזג" ? "❄️ ממוזג" : p.environment === "פתוח" ? "☀️ פתוח" : "🔀 משולב"}
                         </span>
                       )}
                       {p.ageRange && (
-                        <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground font-semibold">
+                        <span className="glass-badge">
                           👶 גילאי {p.ageRange.min}–{p.ageRange.max}
                         </span>
                       )}
                       {p.price && (
-                        <span className="rounded-full bg-amber-100 text-amber-900 px-2.5 py-1 font-semibold">
+                        <span className="glass-badge-warning">
                           🎟️ {p.price}
                         </span>
                       )}
                       {p.isSoftDemoted && (
-                        <span className="rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 font-semibold">
+                        <span className="glass-badge-warning">
                           ⚠️ בדקו שעות אטרקציה פנימית (פעלטון/קולנוע)
                         </span>
                       )}
@@ -806,7 +806,7 @@ function Index() {
                         href={p.mapsUri}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-xl bg-blue-600 text-white px-3 py-1.5 font-semibold hover:opacity-90"
+                        className="glass-link glass-link-maps"
                       >
                         🗺️ פתח ב-Google Maps
                       </a>
@@ -814,7 +814,7 @@ function Index() {
                         href={`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-xl bg-sky-600 text-white px-3 py-1.5 font-semibold hover:opacity-90"
+                        className="glass-link glass-link-waze"
                       >
                         🧭 וויז
                       </a>
@@ -823,7 +823,7 @@ function Index() {
                           href={p.websiteUri}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-xl border px-3 py-1.5 font-semibold hover:bg-secondary"
+                          className="glass-link"
                         >
                           🔗 אתר
                         </a>
