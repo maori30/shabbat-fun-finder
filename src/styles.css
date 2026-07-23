@@ -411,6 +411,82 @@ body {
 .glass-chip { background-color: oklch(1 0 0 / 30%); }
 .glass-empty { background-color: oklch(1 0 0 / 16%); }
 
+/* Tinted glass badges — sit on top of glass cards while staying legible */
+.glass-badge,
+.glass-badge-success,
+.glass-badge-danger,
+.glass-badge-info,
+.glass-badge-warning,
+.glass-badge-neutral {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  border: 1px solid oklch(1 0 0 / 45%);
+  background-color: oklch(1 0 0 / 28%);
+  backdrop-filter: blur(14px) saturate(180%);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 80%) inset,
+    0 4px 12px oklch(0.15 0.08 260 / 18%);
+  color: oklch(0.2 0.05 260);
+}
+.glass-badge-success {
+  background-image: linear-gradient(160deg, oklch(0.82 0.18 155 / 55%), oklch(0.72 0.2 155 / 45%));
+  color: oklch(0.28 0.14 155);
+}
+.glass-badge-danger {
+  background-image: linear-gradient(160deg, oklch(0.82 0.17 25 / 55%), oklch(0.72 0.2 25 / 45%));
+  color: oklch(0.32 0.16 25);
+}
+.glass-badge-info {
+  background-image: linear-gradient(160deg, oklch(0.82 0.14 258 / 55%), oklch(0.7 0.18 258 / 45%));
+  color: oklch(0.28 0.14 258);
+}
+.glass-badge-warning {
+  background-image: linear-gradient(160deg, oklch(0.86 0.15 80 / 60%), oklch(0.78 0.17 60 / 50%));
+  color: oklch(0.34 0.12 60);
+}
+.glass-badge-neutral {
+  background-color: oklch(1 0 0 / 30%);
+  color: oklch(0.25 0.03 260);
+}
+
+.dark .glass-badge,
+.dark .glass-badge-success,
+.dark .glass-badge-danger,
+.dark .glass-badge-info,
+.dark .glass-badge-warning,
+.dark .glass-badge-neutral {
+  border-color: oklch(1 0 0 / 22%);
+  color: oklch(0.98 0.01 240);
+  box-shadow: 0 1px 0 oklch(1 0 0 / 25%) inset, 0 4px 12px oklch(0 0 0 / 45%);
+}
+
+/* Glass action link/button for card CTAs (Maps / Waze / website) */
+.glass-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.9rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+  border: 1px solid oklch(1 0 0 / 45%);
+  background-color: oklch(1 0 0 / 22%);
+  backdrop-filter: blur(16px) saturate(180%);
+  color: oklch(0.2 0.05 260);
+  box-shadow: 0 1px 0 oklch(1 0 0 / 85%) inset, 0 6px 16px oklch(0.15 0.08 260 / 22%);
+  transition: transform 180ms ease, background-color 180ms ease;
+}
+.glass-link:hover { transform: translateY(-1px); background-color: oklch(1 0 0 / 32%); }
+.glass-link-maps { background-image: linear-gradient(160deg, oklch(0.68 0.2 258 / 90%), oklch(0.58 0.22 240 / 85%)); color: white; border-color: oklch(1 0 0 / 55%); }
+.glass-link-waze { background-image: linear-gradient(160deg, oklch(0.72 0.18 220 / 90%), oklch(0.6 0.2 210 / 85%)); color: white; border-color: oklch(1 0 0 / 55%); }
+.dark .glass-link { color: oklch(0.98 0.01 240); background-color: oklch(1 0 0 / 10%); border-color: oklch(1 0 0 / 22%); }
+
 @media (prefers-reduced-motion: reduce) {
   .liquid-orb, .glass-panel::after, .glass-card::after, body {
     animation: none !important;
