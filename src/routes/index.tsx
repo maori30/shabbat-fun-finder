@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { searchPlaces, type PlaceResult } from "@/lib/places.functions";
+import { ThemeToggle } from "@/components/glass/theme-toggle";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -468,13 +470,17 @@ function Index() {
       <div className="liquid-orb orb-c" aria-hidden="true" />
       <div className="liquid-orb orb-d" aria-hidden="true" />
       <header className="glass-header text-primary-foreground rounded-b-[28px]">
-        <div className="mx-auto max-w-5xl px-4 py-10">
+        <div className="mx-auto max-w-5xl px-4 py-10 relative">
+          <div className="absolute top-4 left-4">
+            <ThemeToggle />
+          </div>
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">כיף לילדים 🎈</h1>
           <p className="mt-2 text-base md:text-lg opacity-90">
             מוצאים אטרקציות לילדים – כולל אלה שפתוחות בשבת, ממוזגות או בחוץ, ולפי גיל וקרבה אליכם
           </p>
         </div>
       </header>
+
 
       <main className="mx-auto max-w-5xl px-4 py-6">
         <section className="glass-panel rounded-2xl p-4">
