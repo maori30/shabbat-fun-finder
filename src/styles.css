@@ -98,6 +98,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
@@ -398,6 +399,20 @@ body {
 .dark .glass-field,
 .dark .glass-select {
   background-color: oklch(1 0 0 / 10%);
+  color: oklch(0.95 0.01 250);
+  color-scheme: dark;
+}
+
+/* native dropdown options inherit dark color-scheme so text is readable */
+.dark select option {
+  background-color: oklch(0.2 0.04 265);
+  color: oklch(0.95 0.01 250);
+}
+
+/* ensure all selects on dark mode show light text */
+.dark select {
+  color: oklch(0.95 0.01 250);
+  color-scheme: dark;
 }
 .glass-field:focus,
 .glass-select:focus {
