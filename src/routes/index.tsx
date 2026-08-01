@@ -292,6 +292,24 @@ function Index() {
   const [aiSummary, setAiSummary] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiReasons, setAiReasons] = useState<Record<string, string>>({});
+  // Saved places (works for Google/AI results, which have string ids —
+  // separate from the numeric-id favorites of the built-in attractions).
+  const [savedPlaces, setSavedPlaces] = useState<PlaceResult[]>([]);
+  const [savedOnly, setSavedOnly] = useState(false);
+
+  const isSavedPlace = (id: string) => savedPlaces.some((item) => item.id === id);
+
+  const toggleSavedPlace = (place: PlaceResult) => {
+    setSavedPlaces((prev) => {
+      const next = prev.some((item) => item.id === place.id)
+        ? prev.filter((item) => item.id !== place.id)
+        : [place, ...prev];
+      try {
+        localStorage.setItem("kids_saved_places", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
   const [recentCitySearches, setRecentCitySearches] = useState<
     { cityName: string; result: { lat: number; lng: number; label: string } }[]
   >([]);
@@ -402,6 +420,13 @@ function Index() {
     try {
       const raw = localStorage.getItem("kids_favorites");
       if (raw) setFavorites(JSON.parse(raw));
+    } catch {}
+    try {
+      const rawSaved = localStorage.getItem("kids_saved_places");
+      if (rawSaved) {
+        const parsed = JSON.parse(rawSaved) as PlaceResult[];
+        if (Array.isArray(parsed)) setSavedPlaces(parsed);
+      }
     } catch {}
     try {
       const rawRecent = localStorage.getItem("kids_recent_city_searches");
@@ -765,13 +790,26 @@ function Index() {
             </svg>
             <span className="text-sm font-medium">מחפשים אטרקציות בגוגל בשבילכם...</span>
           </div>
-        ) : googleResults ? (
+        ) : googleResults || (savedOnly && savedPlaces.length > 0) ? (
           <>
-            <div className="mt-4 text-sm text-muted-foreground">
-              🌍 תוצאות: {googleResults.length} · מסודר מהקרוב לרחוק
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <span>
+                {savedOnly
+                  ? `⭐ הרשימה שלי: ${savedPlaces.length} מקומות`
+                  : `🌍 תוצאות: ${googleResults?.length ?? 0} · מסודר מהקרוב לרחוק`}
+              </span>
+              <label className="glass-chip inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5">
+                <input
+                  type="checkbox"
+                  checked={savedOnly}
+                  onChange={(e) => setSavedOnly(e.target.checked)}
+                  className="accent-primary"
+                />
+                <span>⭐ הצג רק את הרשימה שלי ({savedPlaces.length})</span>
+              </label>
             </div>
             <section className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {googleResults.map((p) => {
+              {(savedOnly ? savedPlaces : googleResults ?? []).map((p) => {
                 const dist = origin ? distanceKm(origin, { lat: p.lat, lng: p.lng }) : null;
                 return (
                   <article key={p.id} className="glass-card rounded-2xl p-4 transition-shadow overflow-hidden">
@@ -794,6 +832,17 @@ function Index() {
                           {p.primaryType ?? "מקום"} {p.rating ? `· ⭐ ${p.rating} (${p.userRatingCount ?? 0})` : ""}
                         </div>
                       </div>
+                      <div className="flex shrink-0 flex-col items-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleSavedPlace(p)}
+                          aria-pressed={isSavedPlace(p.id)}
+                          aria-label={isSavedPlace(p.id) ? "הסרה מהרשימה שלי" : "שמירה לרשימה שלי"}
+                          title={isSavedPlace(p.id) ? "הסרה מהרשימה שלי" : "שמירה לרשימה שלי"}
+                          className="glass-btn rounded-full px-2.5 py-1.5 text-lg leading-none transition-transform hover:scale-110 active:scale-95"
+                        >
+                          {isSavedPlace(p.id) ? "❤️" : "🤍"}
+                        </button>
                       {(p.openShabbat !== null || p.saturdayHours) && (
                         <button
                           type="button"
@@ -809,6 +858,7 @@ function Index() {
                           {(p.openShabbat || p.saturdayHours) ? "פתוח בשבת" : "סגור בשבת"}
                         </button>
                       )}
+                      </div>
                     </div>
                     {expandedSaturdayDetails === p.id && p.saturdayHours && (
                       <div className="mt-2 text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1">
@@ -912,11 +962,14 @@ function Index() {
                 );
               })}
             </section>
-            {googleResults.length === 0 && !googleLoading && (
+            {(savedOnly ? savedPlaces.length === 0 : googleResults?.length === 0) && !googleLoading && (
               <div className="glass-empty mt-8 rounded-2xl p-8 text-center text-muted-foreground">
-                לא נמצאו תוצאות ב-Google. נסו לשנות את החיפוש או הרדיוס.
+                {savedOnly
+                  ? "עוד לא שמרתם מקומות. לחצו על 🤍 בכרטיס כדי להוסיף לרשימה."
+                  : "לא נמצאו תוצאות ב-Google. נסו לשנות את החיפוש או הרדיוס."}
               </div>
             )}
+
           </>
         ) : (
           <div className="glass-empty mt-8 rounded-2xl p-10 text-center text-muted-foreground">
