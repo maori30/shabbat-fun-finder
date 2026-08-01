@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { searchPlaces, type PlaceResult } from "@/lib/places.functions";
+import { aiSearch } from "@/lib/ai-search.functions";
 import { ThemeToggle } from "@/components/glass/theme-toggle";
 
 
@@ -285,6 +286,12 @@ function Index() {
   const [expandedSaturdayDetails, setExpandedSaturdayDetails] = useState<string | null>(null);
   const [activityMode, setActivityMode] = useState<boolean>(false);
   const searchPlacesFn = useServerFn(searchPlaces);
+  const aiSearchFn = useServerFn(aiSearch);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [aiReasons, setAiReasons] = useState<Record<string, string>>({});
   const [recentCitySearches, setRecentCitySearches] = useState<
     { cityName: string; result: { lat: number; lng: number; label: string } }[]
   >([]);
@@ -298,6 +305,29 @@ function Index() {
       } catch {}
       return next;
     });
+  };
+
+  const runAiSearch = async () => {
+    if (!aiPrompt.trim()) {
+      setAiError("כתבו במשפט מה אתם מחפשים");
+      return;
+    }
+    setAiLoading(true);
+    setAiError("");
+    setAiSummary("");
+    try {
+      const res = await aiSearchFn({ data: { prompt: aiPrompt.trim(), fallbackOrigin: origin } });
+      if (res.error) setAiError(res.error);
+      if (res.origin) setOrigin(res.origin);
+      setAiSummary(res.summary ?? "");
+      setAiReasons(res.reasons ?? {});
+      if (res.places.length > 0) setGoogleResults(res.places);
+    } catch (e) {
+      console.error(e);
+      setAiError("שגיאה בחיפוש AI");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const runGoogleSearch = async () => {
@@ -484,6 +514,46 @@ function Index() {
 
       <main className="mx-auto max-w-5xl px-4 py-6">
         <section className="glass-panel rounded-2xl p-4">
+          <h2 className="text-lg font-bold">✨ חיפוש חכם עם AI</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            כתבו במשפט אחד מה אתם מחפשים – גילאי הילדים, מאיפה אתם יוצאים, כמה זמן נסיעה ותקציב.
+          </p>
+          <textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            rows={3}
+            placeholder='לדוגמה: יש לנו שני ילדים בני 4 ו־7, אנחנו מראש העין, רוצים משהו עד 30 דקות נסיעה ובחינם'
+            className="glass-field mt-3 w-full rounded-xl px-4 py-3 text-base"
+          />
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              onClick={runAiSearch}
+              disabled={aiLoading}
+              className="glass-btn-primary rounded-2xl px-6 py-3 text-base font-bold disabled:opacity-70 inline-flex items-center gap-2"
+            >
+              {aiLoading ? "ה-AI מחפש בשבילכם..." : "✨ מצא לי פעילות מתאימה"}
+            </button>
+            {aiPrompt && (
+              <button
+                onClick={() => {
+                  setAiPrompt("");
+                  setAiSummary("");
+                  setAiError("");
+                  setAiReasons({});
+                }}
+                className="glass-btn rounded-2xl px-4 py-2 text-sm"
+              >
+                נקה
+              </button>
+            )}
+          </div>
+          {aiSummary && (
+            <div className="glass-panel mt-3 rounded-2xl p-3 text-sm">🤖 {aiSummary}</div>
+          )}
+          {aiError && <div className="mt-2 text-xs text-rose-700">{aiError}</div>}
+        </section>
+
+        <section className="glass-panel mt-4 rounded-2xl p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
               value={query}
@@ -744,6 +814,9 @@ function Index() {
                       <div className="mt-2 text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1">
                         שעות פתיחה וסגירה בשבת: <span className="font-semibold text-foreground">🕒 {p.saturdayHours}</span>
                       </div>
+                    )}
+                    {aiReasons[p.id] && (
+                      <p className="mt-2 text-sm font-medium text-foreground">✨ {aiReasons[p.id]}</p>
                     )}
                     {p.description && (
                       <p className="mt-2 text-sm text-foreground/80">{p.description}</p>
