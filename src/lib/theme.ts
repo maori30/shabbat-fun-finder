@@ -22,7 +22,9 @@ export function getSystemTheme(): Theme {
 }
 
 export function resolveTheme(): Theme {
-  return getStoredTheme() ?? getSystemTheme();
+  // Light is the default; the OS preference is only a hint we ignore so the
+  // app always starts bright until the user picks a theme explicitly.
+  return getStoredTheme() ?? "light";
 }
 
 export function applyTheme(theme: Theme) {
@@ -41,7 +43,7 @@ export const themeBootstrapScript = `(() => {
   try {
     var k = '${KEY}';
     var s = localStorage.getItem(k);
-    var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var d = s === 'dark';
     if (d) document.documentElement.classList.add('dark');
     document.documentElement.style.colorScheme = d ? 'dark' : 'light';
   } catch (_) {}
