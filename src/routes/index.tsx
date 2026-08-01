@@ -962,11 +962,14 @@ function Index() {
                 );
               })}
             </section>
-            {googleResults.length === 0 && !googleLoading && (
+            {(savedOnly ? savedPlaces.length === 0 : googleResults?.length === 0) && !googleLoading && (
               <div className="glass-empty mt-8 rounded-2xl p-8 text-center text-muted-foreground">
-                לא נמצאו תוצאות ב-Google. נסו לשנות את החיפוש או הרדיוס.
+                {savedOnly
+                  ? "עוד לא שמרתם מקומות. לחצו על 🤍 בכרטיס כדי להוסיף לרשימה."
+                  : "לא נמצאו תוצאות ב-Google. נסו לשנות את החיפוש או הרדיוס."}
               </div>
             )}
+
           </>
         ) : (
           <div className="glass-empty mt-8 rounded-2xl p-10 text-center text-muted-foreground">
