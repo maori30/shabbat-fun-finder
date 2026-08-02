@@ -656,12 +656,21 @@ function Index() {
             <div className="text-sm font-semibold mb-2">🔎 חיפוש לפי קרבה אליי</div>
             <div className="flex flex-col md:flex-row gap-2 md:items-center">
               <button
-                onClick={() => useMyLocation()}
-                className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-medium"
+                onClick={runOpenNowNearby}
+                disabled={openNowLoading}
+                className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-bold disabled:opacity-70"
               >
-                📍 השתמש במיקום שלי
+                {openNowLoading ? "מאתר בסביבה..." : "⚡ מה פתוח עכשיו בסביבתי"}
+              </button>
+              <button
+                onClick={() => useMyLocation()}
+                className="glass-btn rounded-2xl px-3 py-2 text-xs"
+                title="רק לעדכן את המיקום שלי בלי חיפוש"
+              >
+                📍 עדכן מיקום
               </button>
               <span className="text-sm text-muted-foreground">או</span>
+
               <select
                 value={nearCity}
                 onChange={(e) => pickCity(e.target.value)}
