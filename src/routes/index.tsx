@@ -483,6 +483,62 @@ function Index() {
     );
   };
 
+  /**
+   * "מה פתוח עכשיו בסביבתי" — one tap: GPS, then an immediate search limited to
+   * ~15–20 minutes of driving (≈18 km), keeping only places that are open now,
+   * open on Shabbat and air-conditioned (indoor/mixed).
+   */
+  const runOpenNowNearby = () => {
+    if (!("geolocation" in navigator)) {
+      setGeoStatus("הדפדפן לא תומך במיקום");
+      return;
+    }
+    setOpenNowLoading(true);
+    setGeoStatus("מאתר מיקום...");
+    setGoogleError("");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const here = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: "המיקום שלי" };
+        const quickRadius = 18; // ~15–20 דקות נסיעה
+        setOrigin(here);
+        setNearCity("");
+        setGeoStatus("");
+        setRadius(quickRadius);
+        setShabbatOnly(true);
+        setEnv("ממוזג");
+        setSavedOnly(false);
+        setAiReasons({});
+        setAiSummary("");
+        try {
+          const res = await searchPlacesFn({
+            data: { lat: here.lat, lng: here.lng, radius: quickRadius * 1000, keyword: "", activityMode: false },
+          });
+          if (res.error) setGoogleError(res.error);
+          const filtered = res.places
+            .filter((p) => p.openNow !== false)
+            .filter((p) => p.openShabbat === true || Boolean(p.saturdayHours))
+            .filter((p) => p.environment !== "פתוח")
+            .sort((a, b) => distanceKm(here, a) - distanceKm(here, b));
+          setGoogleResults(filtered);
+          if (filtered.length === 0) {
+            setGoogleError("לא נמצאו מקומות ממוזגים שפתוחים עכשיו בסביבה – נסו להגדיל את הרדיוס");
+          }
+        } catch (e) {
+          console.error(e);
+          setGoogleError("שגיאה בחיפוש");
+        } finally {
+          setOpenNowLoading(false);
+        }
+      },
+      () => {
+        setGeoStatus("לא הצלחנו לאתר את המיקום");
+        setOpenNowLoading(false);
+      },
+      { timeout: 8000 }
+    );
+  };
+
+
   const pickCity = (city: string) => {
     setNearCity(city);
     if (city && CITY_COORDS[city]) {
