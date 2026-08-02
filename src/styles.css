@@ -531,8 +531,59 @@ body {
 .dark .glass-chip { color: oklch(0.98 0.01 240); background-color: oklch(1 0 0 / 14%); }
 
 
+/* ===== Dark mode legibility: brighter, bolder type on glass ===== */
+.dark {
+  --foreground: oklch(0.995 0.002 240);
+  --card-foreground: oklch(0.995 0.002 240);
+  --popover-foreground: oklch(0.995 0.002 240);
+  /* was ~0.70 lightness — far too dim over the dark aurora glass */
+  --muted-foreground: oklch(0.9 0.02 250);
+}
+
+.dark body {
+  color: oklch(0.995 0.002 240);
+}
+
+.dark .glass-panel,
+.dark .glass-card,
+.dark .glass-empty,
+.dark .glass-btn,
+.dark .glass-chip {
+  color: oklch(0.995 0.002 240);
+}
+
+.dark .glass-card h1,
+.dark .glass-card h2,
+.dark .glass-card h3,
+.dark .glass-panel h1,
+.dark .glass-panel h2,
+.dark .glass-panel h3 {
+  color: oklch(1 0 0);
+  font-weight: 800;
+  text-shadow: 0 1px 10px oklch(0 0 0 / 55%);
+}
+
+.dark .glass-card p,
+.dark .glass-panel p,
+.dark .glass-card span,
+.dark .glass-panel span,
+.dark .glass-card label,
+.dark .glass-panel label {
+  text-shadow: 0 1px 6px oklch(0 0 0 / 45%);
+}
+
+/* muted text must stay readable, not blend into the dark background */
+.dark .text-muted-foreground {
+  color: oklch(0.9 0.02 250);
+}
+.dark .text-foreground\/80,
+.dark .text-muted-foreground\/70 {
+  color: oklch(0.88 0.02 250);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .liquid-orb, .glass-panel::after, .glass-card::after, body {
     animation: none !important;
   }
 }
+

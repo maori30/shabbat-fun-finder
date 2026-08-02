@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { searchPlaces, type PlaceResult } from "@/lib/places.functions";
 import { aiSearch } from "@/lib/ai-search.functions";
 import { ThemeToggle } from "@/components/glass/theme-toggle";
+import { CommunityReports } from "@/components/community-reports";
+
 
 
 export const Route = createFileRoute("/")({
@@ -282,6 +284,8 @@ function Index() {
   const [showFavOnly, setShowFavOnly] = useState(false);
   const [googleResults, setGoogleResults] = useState<PlaceResult[] | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [openNowLoading, setOpenNowLoading] = useState(false);
+
   const [googleError, setGoogleError] = useState<string>("");
   const [expandedSaturdayDetails, setExpandedSaturdayDetails] = useState<string | null>(null);
   const [activityMode, setActivityMode] = useState<boolean>(false);
@@ -483,6 +487,62 @@ function Index() {
     );
   };
 
+  /**
+   * "מה פתוח עכשיו בסביבתי" — one tap: GPS, then an immediate search limited to
+   * ~15–20 minutes of driving (≈18 km), keeping only places that are open now,
+   * open on Shabbat and air-conditioned (indoor/mixed).
+   */
+  const runOpenNowNearby = () => {
+    if (!("geolocation" in navigator)) {
+      setGeoStatus("הדפדפן לא תומך במיקום");
+      return;
+    }
+    setOpenNowLoading(true);
+    setGeoStatus("מאתר מיקום...");
+    setGoogleError("");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const here = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: "המיקום שלי" };
+        const quickRadius = 18; // ~15–20 דקות נסיעה
+        setOrigin(here);
+        setNearCity("");
+        setGeoStatus("");
+        setRadius(quickRadius);
+        setShabbatOnly(true);
+        setEnv("ממוזג");
+        setSavedOnly(false);
+        setAiReasons({});
+        setAiSummary("");
+        try {
+          const res = await searchPlacesFn({
+            data: { lat: here.lat, lng: here.lng, radius: quickRadius * 1000, keyword: "", activityMode: false },
+          });
+          if (res.error) setGoogleError(res.error);
+          const filtered = res.places
+            .filter((p) => p.openNow !== false)
+            .filter((p) => p.openShabbat === true || Boolean(p.saturdayHours))
+            .filter((p) => p.environment !== "פתוח")
+            .sort((a, b) => distanceKm(here, a) - distanceKm(here, b));
+          setGoogleResults(filtered);
+          if (filtered.length === 0) {
+            setGoogleError("לא נמצאו מקומות ממוזגים שפתוחים עכשיו בסביבה – נסו להגדיל את הרדיוס");
+          }
+        } catch (e) {
+          console.error(e);
+          setGoogleError("שגיאה בחיפוש");
+        } finally {
+          setOpenNowLoading(false);
+        }
+      },
+      () => {
+        setGeoStatus("לא הצלחנו לאתר את המיקום");
+        setOpenNowLoading(false);
+      },
+      { timeout: 8000 }
+    );
+  };
+
+
   const pickCity = (city: string) => {
     setNearCity(city);
     if (city && CITY_COORDS[city]) {
@@ -656,12 +716,21 @@ function Index() {
             <div className="text-sm font-semibold mb-2">🔎 חיפוש לפי קרבה אליי</div>
             <div className="flex flex-col md:flex-row gap-2 md:items-center">
               <button
-                onClick={() => useMyLocation()}
-                className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-medium"
+                onClick={runOpenNowNearby}
+                disabled={openNowLoading}
+                className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-bold disabled:opacity-70"
               >
-                📍 השתמש במיקום שלי
+                {openNowLoading ? "מאתר בסביבה..." : "⚡ מה פתוח עכשיו בסביבתי"}
+              </button>
+              <button
+                onClick={() => useMyLocation()}
+                className="glass-btn rounded-2xl px-3 py-2 text-xs"
+                title="רק לעדכן את המיקום שלי בלי חיפוש"
+              >
+                📍 עדכן מיקום
               </button>
               <span className="text-sm text-muted-foreground">או</span>
+
               <select
                 value={nearCity}
                 onChange={(e) => pickCity(e.target.value)}
@@ -958,7 +1027,9 @@ function Index() {
                         </a>
                       )}
                     </div>
+                    <CommunityReports placeId={p.id} placeName={p.name} />
                   </article>
+
                 );
               })}
             </section>
