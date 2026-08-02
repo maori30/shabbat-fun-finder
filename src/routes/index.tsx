@@ -1025,7 +1025,9 @@ function Index() {
                         </a>
                       )}
                     </div>
+                    <CommunityReports placeId={p.id} placeName={p.name} />
                   </article>
+
                 );
               })}
             </section>
