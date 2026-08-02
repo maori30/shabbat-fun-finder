@@ -282,6 +282,8 @@ function Index() {
   const [showFavOnly, setShowFavOnly] = useState(false);
   const [googleResults, setGoogleResults] = useState<PlaceResult[] | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [openNowLoading, setOpenNowLoading] = useState(false);
+
   const [googleError, setGoogleError] = useState<string>("");
   const [expandedSaturdayDetails, setExpandedSaturdayDetails] = useState<string | null>(null);
   const [activityMode, setActivityMode] = useState<boolean>(false);
