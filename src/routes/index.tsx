@@ -488,59 +488,91 @@ function Index() {
   };
 
   /**
-   * "מה פתוח עכשיו בסביבתי" — one tap: GPS, then an immediate search limited to
-   * ~15–20 minutes of driving (≈18 km), keeping only places that are open now,
-   * open on Shabbat and air-conditioned (indoor/mixed).
+   * "מה פתוח עכשיו בסביבתי" — one tap: use GPS (or the origin already chosen if
+   * the browser blocks location), search ~15–20 minutes of driving (≈18 km) and
+   * keep what is open right now. Preference is given to air-conditioned places
+   * that are also open on Shabbat, but the filters relax step by step (and the
+   * radius grows) instead of returning an empty list.
    */
-  const runOpenNowNearby = () => {
-    if (!("geolocation" in navigator)) {
-      setGeoStatus("הדפדפן לא תומך במיקום");
-      return;
-    }
+  const runOpenNowNearby = async () => {
     setOpenNowLoading(true);
-    setGeoStatus("מאתר מיקום...");
     setGoogleError("");
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const here = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: "המיקום שלי" };
-        const quickRadius = 18; // ~15–20 דקות נסיעה
-        setOrigin(here);
+    setSavedOnly(false);
+    setAiReasons({});
+    setAiSummary("");
+
+    const getHere = () =>
+      new Promise<{ lat: number; lng: number; label: string } | null>((resolve) => {
+        if (!("geolocation" in navigator)) return resolve(null);
+        setGeoStatus("מאתר מיקום...");
+        navigator.geolocation.getCurrentPosition(
+          (pos) =>
+            resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: "המיקום שלי" }),
+          () => resolve(null),
+          { timeout: 10000, maximumAge: 300000 }
+        );
+      });
+
+    try {
+      const located = await getHere();
+      const here = located ?? origin;
+      if (!here) {
+        setGeoStatus("לא הצלחנו לאתר את המיקום – בחרו עיר קרובה מהרשימה");
+        return;
+      }
+      if (located) {
+        setOrigin(located);
         setNearCity("");
-        setGeoStatus("");
+      }
+      setGeoStatus(located ? "" : `לא קיבלנו מיקום GPS – מחפשים סביב ${here.label}`);
+
+      const isShabbatNow = new Date().getDay() === 6;
+      // Try a tight radius first, then widen if nothing sensible comes back.
+      for (const quickRadius of [18, 35]) {
         setRadius(quickRadius);
-        setShabbatOnly(true);
-        setEnv("ממוזג");
-        setSavedOnly(false);
-        setAiReasons({});
-        setAiSummary("");
-        try {
-          const res = await searchPlacesFn({
-            data: { lat: here.lat, lng: here.lng, radius: quickRadius * 1000, keyword: "", activityMode: false },
-          });
-          if (res.error) setGoogleError(res.error);
-          const filtered = res.places
-            .filter((p) => p.openNow !== false)
-            .filter((p) => p.openShabbat === true || Boolean(p.saturdayHours))
-            .filter((p) => p.environment !== "פתוח")
-            .sort((a, b) => distanceKm(here, a) - distanceKm(here, b));
-          setGoogleResults(filtered);
-          if (filtered.length === 0) {
-            setGoogleError("לא נמצאו מקומות ממוזגים שפתוחים עכשיו בסביבה – נסו להגדיל את הרדיוס");
-          }
-        } catch (e) {
-          console.error(e);
-          setGoogleError("שגיאה בחיפוש");
-        } finally {
-          setOpenNowLoading(false);
+        const res = await searchPlacesFn({
+          data: { lat: here.lat, lng: here.lng, radius: quickRadius * 1000, keyword: "", activityMode: false },
+        });
+        if (res.error) {
+          setGoogleError(res.error);
+          setGoogleResults([]);
+          return;
         }
-      },
-      () => {
-        setGeoStatus("לא הצלחנו לאתר את המיקום");
-        setOpenNowLoading(false);
-      },
-      { timeout: 8000 }
-    );
+
+        const byDistance = (list: PlaceResult[]) =>
+          [...list].sort((a, b) => distanceKm(here, a) - distanceKm(here, b));
+        const openNow = res.places.filter((p) => p.openNow !== false);
+        const shabbatFriendly = openNow.filter((p) => p.openShabbat === true || Boolean(p.saturdayHours));
+        const indoorShabbat = shabbatFriendly.filter((p) => p.environment === "ממוזג" || p.environment === "משולב");
+
+        // Best → good enough, in order.
+        const tiers: { list: PlaceResult[]; note: string }[] = [
+          { list: indoorShabbat, note: "" },
+          { list: shabbatFriendly, note: "אין מקומות ממוזגים פנויים – מוצגים גם מקומות פתוחים" },
+          { list: openNow, note: isShabbatNow ? "" : "מוצג מה שפתוח עכשיו (לא בהכרח פתוח בשבת)" },
+        ];
+        const hit = tiers.find((t) => t.list.length >= 3) ?? tiers.find((t) => t.list.length > 0);
+        if (hit) {
+          setShabbatOnly(hit.list === indoorShabbat || hit.list === shabbatFriendly);
+          setEnv(hit.list === indoorShabbat ? "ממוזג" : "all");
+          setGoogleResults(byDistance(hit.list));
+          setGoogleError(
+            hit.note ? `${hit.note} · רדיוס ${quickRadius} ק"מ` : ""
+          );
+          return;
+        }
+      }
+
+      setGoogleResults([]);
+      setGoogleError("לא מצאנו מקומות שפתוחים עכשיו בסביבה – נסו להגדיל את הרדיוס או לחפש בגוגל");
+    } catch (e) {
+      console.error(e);
+      setGoogleError("שגיאה בחיפוש");
+    } finally {
+      setOpenNowLoading(false);
+    }
   };
+
 
 
   const pickCity = (city: string) => {
@@ -646,16 +678,21 @@ function Index() {
               placeholder="חיפוש לפי שם או קטגוריה"
               className="glass-field w-full rounded-xl px-4 py-3 text-base"
             />
-            <div className="flex gap-2">
-              <input
-                type="number"
-                min={0}
-                max={18}
-                value={age}
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={age === "" ? "" : String(age)}
                 onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
-                placeholder="גיל הילד"
-                className="glass-field w-full rounded-xl px-4 py-3 text-base"
-              />
+                className="glass-select rounded-xl px-3 py-3 text-base"
+                aria-label="גיל הילד"
+              >
+                <option value="">גיל הילד</option>
+                {Array.from({ length: 19 }, (_, i) => i).map((n) => (
+                  <option key={n} value={n}>
+                    גיל {n}
+                  </option>
+                ))}
+              </select>
+
               <select
                 value={env}
                 onChange={(e) => setEnv(e.target.value as typeof env)}
