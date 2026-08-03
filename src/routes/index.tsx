@@ -646,16 +646,21 @@ function Index() {
               placeholder="חיפוש לפי שם או קטגוריה"
               className="glass-field w-full rounded-xl px-4 py-3 text-base"
             />
-            <div className="flex gap-2">
-              <input
-                type="number"
-                min={0}
-                max={18}
-                value={age}
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={age === "" ? "" : String(age)}
                 onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
-                placeholder="גיל הילד"
-                className="glass-field w-full rounded-xl px-4 py-3 text-base"
-              />
+                className="glass-select rounded-xl px-3 py-3 text-base"
+                aria-label="גיל הילד"
+              >
+                <option value="">גיל הילד</option>
+                {Array.from({ length: 19 }, (_, i) => i).map((n) => (
+                  <option key={n} value={n}>
+                    גיל {n}
+                  </option>
+                ))}
+              </select>
+
               <select
                 value={env}
                 onChange={(e) => setEnv(e.target.value as typeof env)}
