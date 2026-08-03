@@ -671,14 +671,14 @@ function Index() {
         </section>
 
         <section className="glass-panel mt-4 rounded-2xl p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="חיפוש לפי שם או קטגוריה"
-              className="glass-field w-full rounded-xl px-4 py-3 text-base"
+              placeholder="שם או קטגוריה"
+              className="glass-field w-full min-w-0 rounded-xl px-3 py-2.5 text-sm md:col-span-1"
             />
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 md:col-span-3">
               <select
                 value={age === "" ? "" : String(age)}
                 onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
