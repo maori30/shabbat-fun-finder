@@ -61,10 +61,32 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Types that are usually free (or free to enter) — not just parks: beaches,
+// promenades, libraries, community centers, markets, plazas, lookouts,
+// historical/cultural sites and malls (window shopping + free play corners).
 const FREE_HINT_TYPES = new Set([
   "park", "national_park", "state_park", "playground", "dog_park",
-  "library", "community_center", "shopping_mall", "botanical_garden",
+  "library", "community_center", "botanical_garden", "shopping_mall",
+  "beach", "tourist_attraction", "observation_deck", "cultural_landmark",
+  "historical_place", "plaza", "hiking_area", "marina", "market",
+  "athletic_field", "skateboard_park", "sports_complex", "cultural_center",
+  "art_gallery", "visitor_center", "monument", "church", "synagogue",
+  "farm", "garden", "picnic_ground", "scenic_lookout",
 ]);
+
+// Hebrew/English name hints for places that normally cost nothing to visit.
+const FREE_NAME_HINT =
+  /פארק|גן ?שעשועים|גן ציבורי|גינה|טיילת|חוף|כיכר|ספריי?ה|מרכז קהילתי|מתנ"?ס|שוק|תצפית|יער|נחל|מפל|מגרש|סקייט|מוזיאון פתוח|park|playground|beach|promenade|library|square|market|trail/i;
+
+// Extra search terms used when the parent asked for something free.
+const FREE_EXTRA_QUERIES = [
+  "גן שעשועים",
+  "פארק ציבורי",
+  "טיילת",
+  "ספרייה עירונית",
+  "מתחם משחקים חינם לילדים",
+];
+
 
 export const aiSearch = createServerFn({ method: "POST" })
   .inputValidator((data: { prompt: string; fallbackOrigin?: { lat: number; lng: number; label: string } | null }) => ({
