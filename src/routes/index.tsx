@@ -279,6 +279,7 @@ function Index() {
   const [radius, setRadius] = useState<number>(30);
   const [origin, setOrigin] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [geoStatus, setGeoStatus] = useState<string>("");
+  const [geoBlocked, setGeoBlocked] = useState(false);
   const [didAutoLocate, setDidAutoLocate] = useState(false);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showFavOnly, setShowFavOnly] = useState(false);
@@ -467,32 +468,61 @@ function Index() {
 
   const cityNames = useMemo(() => Object.keys(CITY_COORDS).sort((a, b) => a.localeCompare(b, "he")), []);
 
-  const useMyLocation = (silent = false) => {
-    if (!("geolocation" in navigator)) {
-      if (!silent) setGeoStatus("הדפדפן לא תומך במיקום");
-      return;
+  /**
+   * Resolve GPS position with a hard timeout — some devices/browsers block
+   * location silently and never call either callback, which used to leave the
+   * UI stuck on "מאתר מיקום...".
+   */
+  const getPosition = (timeoutMs = 8000) =>
+    new Promise<{ lat: number; lng: number; label: string } | null>((resolve) => {
+      if (typeof navigator === "undefined" || !("geolocation" in navigator)) return resolve(null);
+      let settled = false;
+      const done = (v: { lat: number; lng: number; label: string } | null) => {
+        if (settled) return;
+        settled = true;
+        resolve(v);
+      };
+      const timer = setTimeout(() => done(null), timeoutMs);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          clearTimeout(timer);
+          done({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: "המיקום שלי" });
+        },
+        () => {
+          clearTimeout(timer);
+          done(null);
+        },
+        { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 300000 }
+      );
+    });
+
+  const useMyLocation = async (silent = false) => {
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      setGeoBlocked(true);
+      if (!silent) setGeoStatus("הדפדפן לא תומך במיקום – בחרו עיר קרובה מהרשימה");
+      return null;
     }
-    setGeoStatus("מאתר מיקום...");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setOrigin({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: "המיקום שלי" });
-        setNearCity("");
-        setGeoStatus("");
-      },
-      () => {
-        if (!silent) setGeoStatus("לא הצלחנו לאתר את המיקום");
-        else setGeoStatus("");
-      },
-      { timeout: 8000 }
+    if (!silent) setGeoStatus("מאתר מיקום...");
+    const located = await getPosition();
+    if (located) {
+      setGeoBlocked(false);
+      setOrigin(located);
+      setNearCity("");
+      setGeoStatus("");
+      return located;
+    }
+    setGeoBlocked(true);
+    setGeoStatus(
+      silent ? "" : "המיקום חסום במכשיר – בחרו עיר קרובה מהרשימה והכפתור יחפש סביבה"
     );
+    return null;
   };
 
   /**
-   * "מה פתוח עכשיו בסביבתי" — one tap: use GPS (or the origin already chosen if
-   * the browser blocks location), search ~15–20 minutes of driving (≈18 km) and
-   * keep what is open right now. Preference is given to air-conditioned places
-   * that are also open on Shabbat, but the filters relax step by step (and the
-   * radius grows) instead of returning an empty list.
+   * "מה פתוח עכשיו בסביבתי" — one tap: use GPS, and when the device blocks
+   * location fall back to the city already chosen so the button still works.
+   * Searches ~15–20 minutes of driving and relaxes filters step by step
+   * instead of returning an empty list.
    */
   const runOpenNowNearby = async () => {
     setOpenNowLoading(true);
@@ -501,30 +531,21 @@ function Index() {
     setAiReasons({});
     setAiSummary("");
 
-    const getHere = () =>
-      new Promise<{ lat: number; lng: number; label: string } | null>((resolve) => {
-        if (!("geolocation" in navigator)) return resolve(null);
-        setGeoStatus("מאתר מיקום...");
-        navigator.geolocation.getCurrentPosition(
-          (pos) =>
-            resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: "המיקום שלי" }),
-          () => resolve(null),
-          { timeout: 10000, maximumAge: 300000 }
-        );
-      });
-
     try {
-      const located = await getHere();
+      const located = geoBlocked ? null : await getPosition();
       const here = located ?? origin;
       if (!here) {
-        setGeoStatus("לא הצלחנו לאתר את המיקום – בחרו עיר קרובה מהרשימה");
+        setGeoBlocked(true);
+        setGeoStatus("לא הצלחנו לאתר את המיקום – בחרו עיר קרובה מהרשימה ולחצו שוב");
         return;
       }
       if (located) {
+        setGeoBlocked(false);
         setOrigin(located);
         setNearCity("");
       }
-      setGeoStatus(located ? "" : `לא קיבלנו מיקום GPS – מחפשים סביב ${here.label}`);
+      setGeoStatus(located ? "" : `מחפשים סביב ${here.label}`);
+
 
       const isShabbatNow = new Date().getDay() === 6;
       // Try a tight radius first, then widen if nothing sensible comes back.
@@ -754,19 +775,27 @@ function Index() {
             <div className="flex flex-col md:flex-row gap-2 md:items-center">
               <button
                 onClick={runOpenNowNearby}
-                disabled={openNowLoading}
+                disabled={openNowLoading || (geoBlocked && !origin)}
                 className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-bold disabled:opacity-70"
+                title={geoBlocked && !origin ? "בחרו עיר קרובה כדי להפעיל" : undefined}
               >
-                {openNowLoading ? "מאתר בסביבה..." : "⚡ מה פתוח עכשיו בסביבתי"}
+                {openNowLoading
+                  ? "מאתר בסביבה..."
+                  : geoBlocked && origin
+                    ? `⚡ מה פתוח עכשיו סביב ${origin.label}`
+                    : "⚡ מה פתוח עכשיו בסביבתי"}
               </button>
-              <button
-                onClick={() => useMyLocation()}
-                className="glass-btn rounded-2xl px-3 py-2 text-xs"
-                title="רק לעדכן את המיקום שלי בלי חיפוש"
-              >
-                📍 עדכן מיקום
-              </button>
+              {!geoBlocked && (
+                <button
+                  onClick={() => useMyLocation()}
+                  className="glass-btn rounded-2xl px-3 py-2 text-xs"
+                  title="רק לעדכן את המיקום שלי בלי חיפוש"
+                >
+                  📍 עדכן מיקום
+                </button>
+              )}
               <span className="text-sm text-muted-foreground">או</span>
+
 
               <select
                 value={nearCity}
