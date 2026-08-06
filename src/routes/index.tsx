@@ -279,6 +279,7 @@ function Index() {
   const [radius, setRadius] = useState<number>(30);
   const [origin, setOrigin] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [geoStatus, setGeoStatus] = useState<string>("");
+  const [geoBlocked, setGeoBlocked] = useState(false);
   const [didAutoLocate, setDidAutoLocate] = useState(false);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showFavOnly, setShowFavOnly] = useState(false);
