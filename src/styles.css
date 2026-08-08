@@ -155,10 +155,6 @@
   75% { transform: translate(5%, 5%) scale(1.08) rotate(5deg); }
 }
 
-@keyframes sheen-sweep {
-  0% { transform: translateX(-140%) rotate(22deg); }
-  100% { transform: translateX(260%) rotate(22deg); }
-}
 
 /* Composited drift for the aurora layer. Animating `background-position`
    forced a full-page repaint every frame, and Chromium rasterized the blurred
@@ -327,26 +323,24 @@ body::before {
     radial-gradient(ellipse at 25% 8%, oklch(1 0 0 / 22%), transparent 50%);
 }
 
-/* Signature liquid sheen streak */
+/* Signature liquid sheen — a soft radial glow instead of a rotated rectangle.
+   The old animated rectangle rendered visible straight edges ("squares") on
+   large glass surfaces, so it's replaced with a static, edge-free highlight. */
 .glass-panel::after,
 .glass-card::after {
   content: "";
   position: absolute;
-  top: -30%;
-  left: 0;
-  width: 45%;
-  height: 160%;
-  background: linear-gradient(100deg, transparent, oklch(1 0 0 / 65%) 45%, transparent 72%);
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse 70% 55% at 18% -10%, oklch(1 0 0 / 32%), transparent 70%);
   z-index: 0;
   pointer-events: none;
-  animation: sheen-sweep 8s ease-in-out infinite;
-  animation-delay: calc(var(--sheen-delay, 0) * 1s);
-  mix-blend-mode: overlay;
 }
 .dark .glass-panel::after,
 .dark .glass-card::after {
-  background: linear-gradient(100deg, transparent, oklch(1 0 0 / 32%) 45%, transparent 72%);
+  background: radial-gradient(ellipse 70% 55% at 18% -10%, oklch(1 0 0 / 16%), transparent 70%);
 }
+
 
 .glass-panel > *, .glass-card > *,
 .glass-btn > *, .glass-btn-primary > *,
