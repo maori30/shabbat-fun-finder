@@ -603,7 +603,7 @@ body::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liquid-orb, .glass-panel::after, .glass-card::after, body {
+  .liquid-orb, .glass-panel::after, .glass-card::after, body, body::before {
     animation: none !important;
   }
 }
