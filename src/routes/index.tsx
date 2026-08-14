@@ -760,6 +760,7 @@ function Index() {
                 value={env}
                 onChange={(e) => setEnv(e.target.value as typeof env)}
                 className="glass-select rounded-xl px-3 py-3 text-base"
+                aria-label="סינון לפי סביבה"
               >
                 <option value="all">סביבה</option>
                 <option value="ממוזג">ממוזג</option>
@@ -770,7 +771,9 @@ function Index() {
                 value={region}
                 onChange={(e) => setRegion(e.target.value as typeof region)}
                 className="glass-select rounded-xl px-3 py-3 text-base"
+                aria-label="סינון לפי אזור"
               >
+
                 <option value="all">אזור</option>
                 <option value="צפון">צפון</option>
                 <option value="מרכז">מרכז</option>
