@@ -680,7 +680,7 @@ function Index() {
           <div className="absolute top-4 left-4">
             <ThemeToggle />
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">כיף לילדים 🎈</h1>
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">כיף לילדים – אטרקציות ובילויים בשבת 🎈</h1>
           <p className="mt-2 text-base md:text-lg opacity-90">
             מוצאים אטרקציות לילדים – כולל אלה שפתוחות בשבת, ממוזגות או בחוץ, ולפי גיל וקרבה אליכם
           </p>
