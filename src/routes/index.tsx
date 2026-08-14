@@ -8,17 +8,55 @@ import { CommunityReports } from "@/components/community-reports";
 
 
 
+const SITE_URL = "https://shabbat-fun-finder.lovable.app";
+const PREVIEW_IMAGE =
+  "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3f3e2798-46a9-4cf9-b705-135aa985ee2e/id-preview-8a30869f--dd57b2b5-8044-449c-a0ff-301604bcb1e2.lovable.app-1784199306437.png";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "כיף לילדים - אטרקציות בשבת" },
-      { name: "description", content: "מצאו אטרקציות לילדים הפתוחות בשבת, עם סינון לפי גיל, מיזוג, מיקום וקרבה אליכם." },
-      { property: "og:title", content: "כיף לילדים - אטרקציות בשבת" },
-      { property: "og:description", content: "מצאו אטרקציות לילדים הפתוחות בשבת, עם סינון לפי גיל, מיזוג, מיקום וקרבה אליכם." },
+      { title: "כיף לילדים - אטרקציות ובילויים לילדים בשבת" },
+      { name: "description", content: "מצאו אטרקציות ובילויים לילדים הפתוחים בשבת, עם סינון לפי גיל, מיזוג, מיקום וקרבה אליכם." },
+      { property: "og:title", content: "כיף לילדים - אטרקציות ובילויים לילדים בשבת" },
+      { property: "og:description", content: "מצאו אטרקציות ובילויים לילדים הפתוחים בשבת, עם סינון לפי גיל, מיזוג, מיקום וקרבה אליכם." },
+      { property: "og:url", content: `${SITE_URL}/` },
+      { property: "og:image", content: PREVIEW_IMAGE },
+      { name: "twitter:image", content: PREVIEW_IMAGE },
+    ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/` }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": `${SITE_URL}/#organization`,
+              name: "כיף לילדים",
+              url: `${SITE_URL}/`,
+            },
+            {
+              "@type": "WebSite",
+              "@id": `${SITE_URL}/#website`,
+              name: "כיף לילדים",
+              url: `${SITE_URL}/`,
+              inLanguage: "he-IL",
+              publisher: { "@id": `${SITE_URL}/#organization` },
+              potentialAction: {
+                "@type": "SearchAction",
+                target: `${SITE_URL}/?q={search_term_string}`,
+                "query-input": "required name=search_term_string",
+              },
+            },
+          ],
+        }),
+      },
     ],
   }),
   component: Index,
 });
+
 
 type Attraction = {
   id: number;
