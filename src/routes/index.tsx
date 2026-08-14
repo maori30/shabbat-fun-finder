@@ -846,6 +846,7 @@ function Index() {
                 value={nearCity}
                 onChange={(e) => pickCity(e.target.value)}
                 className="glass-select rounded-2xl px-3 py-2 text-sm"
+                aria-label="בחירת עיר קרובה"
               >
                 <option value="">בחרו עיר קרובה...</option>
                 {cityNames.map((c) => (
@@ -854,8 +855,9 @@ function Index() {
               </select>
 
               <div className="flex items-center gap-2 flex-1">
-                <label className="text-sm whitespace-nowrap">רדיוס: {radius} ק"מ</label>
+                <label htmlFor="radius-range" className="text-sm whitespace-nowrap">רדיוס: {radius} ק"מ</label>
                 <input
+                  id="radius-range"
                   type="range"
                   min={5}
                   max={500}
@@ -865,6 +867,7 @@ function Index() {
                   className="w-full accent-primary"
                 />
               </div>
+
               {origin && (
                 <button
                   onClick={clearNearby}
