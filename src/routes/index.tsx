@@ -8,17 +8,55 @@ import { CommunityReports } from "@/components/community-reports";
 
 
 
+const SITE_URL = "https://shabbat-fun-finder.lovable.app";
+const PREVIEW_IMAGE =
+  "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3f3e2798-46a9-4cf9-b705-135aa985ee2e/id-preview-8a30869f--dd57b2b5-8044-449c-a0ff-301604bcb1e2.lovable.app-1784199306437.png";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "כיף לילדים - אטרקציות בשבת" },
-      { name: "description", content: "מצאו אטרקציות לילדים הפתוחות בשבת, עם סינון לפי גיל, מיזוג, מיקום וקרבה אליכם." },
-      { property: "og:title", content: "כיף לילדים - אטרקציות בשבת" },
-      { property: "og:description", content: "מצאו אטרקציות לילדים הפתוחות בשבת, עם סינון לפי גיל, מיזוג, מיקום וקרבה אליכם." },
+      { title: "כיף לילדים - אטרקציות ובילויים לילדים בשבת" },
+      { name: "description", content: "מצאו אטרקציות ובילויים לילדים הפתוחים בשבת, עם סינון לפי גיל, מיזוג, מיקום וקרבה אליכם." },
+      { property: "og:title", content: "כיף לילדים - אטרקציות ובילויים לילדים בשבת" },
+      { property: "og:description", content: "מצאו אטרקציות ובילויים לילדים הפתוחים בשבת, עם סינון לפי גיל, מיזוג, מיקום וקרבה אליכם." },
+      { property: "og:url", content: `${SITE_URL}/` },
+      { property: "og:image", content: PREVIEW_IMAGE },
+      { name: "twitter:image", content: PREVIEW_IMAGE },
+    ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/` }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": `${SITE_URL}/#organization`,
+              name: "כיף לילדים",
+              url: `${SITE_URL}/`,
+            },
+            {
+              "@type": "WebSite",
+              "@id": `${SITE_URL}/#website`,
+              name: "כיף לילדים",
+              url: `${SITE_URL}/`,
+              inLanguage: "he-IL",
+              publisher: { "@id": `${SITE_URL}/#organization` },
+              potentialAction: {
+                "@type": "SearchAction",
+                target: `${SITE_URL}/?q={search_term_string}`,
+                "query-input": "required name=search_term_string",
+              },
+            },
+          ],
+        }),
+      },
     ],
   }),
   component: Index,
 });
+
 
 type Attraction = {
   id: number;
@@ -642,7 +680,7 @@ function Index() {
           <div className="absolute top-4 left-4">
             <ThemeToggle />
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">כיף לילדים 🎈</h1>
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">כיף לילדים – אטרקציות ובילויים בשבת 🎈</h1>
           <p className="mt-2 text-base md:text-lg opacity-90">
             מוצאים אטרקציות לילדים – כולל אלה שפתוחות בשבת, ממוזגות או בחוץ, ולפי גיל וקרבה אליכם
           </p>
@@ -660,9 +698,11 @@ function Index() {
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
             rows={3}
+            aria-label="תיאור הפעילות שאתם מחפשים"
             placeholder='לדוגמה: יש לנו שני ילדים בני 4 ו־7, אנחנו מראש העין, רוצים משהו עד 30 דקות נסיעה ובחינם'
             className="glass-field mt-3 w-full rounded-xl px-4 py-3 text-base"
           />
+
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={runAiSearch}
@@ -697,8 +737,10 @@ function Index() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="שם או קטגוריה"
+              aria-label="חיפוש לפי שם או קטגוריה"
               className="glass-field w-full min-w-0 rounded-xl px-3 py-2.5 text-sm md:col-span-1"
             />
+
             <div className="flex flex-wrap gap-2 md:col-span-3">
               <select
                 value={age === "" ? "" : String(age)}
@@ -718,6 +760,7 @@ function Index() {
                 value={env}
                 onChange={(e) => setEnv(e.target.value as typeof env)}
                 className="glass-select rounded-xl px-3 py-3 text-base"
+                aria-label="סינון לפי סביבה"
               >
                 <option value="all">סביבה</option>
                 <option value="ממוזג">ממוזג</option>
@@ -728,7 +771,9 @@ function Index() {
                 value={region}
                 onChange={(e) => setRegion(e.target.value as typeof region)}
                 className="glass-select rounded-xl px-3 py-3 text-base"
+                aria-label="סינון לפי אזור"
               >
+
                 <option value="all">אזור</option>
                 <option value="צפון">צפון</option>
                 <option value="מרכז">מרכז</option>
@@ -801,6 +846,7 @@ function Index() {
                 value={nearCity}
                 onChange={(e) => pickCity(e.target.value)}
                 className="glass-select rounded-2xl px-3 py-2 text-sm"
+                aria-label="בחירת עיר קרובה"
               >
                 <option value="">בחרו עיר קרובה...</option>
                 {cityNames.map((c) => (
@@ -809,8 +855,9 @@ function Index() {
               </select>
 
               <div className="flex items-center gap-2 flex-1">
-                <label className="text-sm whitespace-nowrap">רדיוס: {radius} ק"מ</label>
+                <label htmlFor="radius-range" className="text-sm whitespace-nowrap">רדיוס: {radius} ק"מ</label>
                 <input
+                  id="radius-range"
                   type="range"
                   min={5}
                   max={500}
@@ -820,6 +867,7 @@ function Index() {
                   className="w-full accent-primary"
                 />
               </div>
+
               {origin && (
                 <button
                   onClick={clearNearby}
