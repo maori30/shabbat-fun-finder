@@ -698,9 +698,11 @@ function Index() {
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
             rows={3}
+            aria-label="תיאור הפעילות שאתם מחפשים"
             placeholder='לדוגמה: יש לנו שני ילדים בני 4 ו־7, אנחנו מראש העין, רוצים משהו עד 30 דקות נסיעה ובחינם'
             className="glass-field mt-3 w-full rounded-xl px-4 py-3 text-base"
           />
+
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={runAiSearch}
