@@ -113,7 +113,7 @@ export const aiSearch = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              'אתה מנתח בקשות של הורים בישראל למצוא פעילות לילדים. החזר JSON בלבד במבנה: {"city": string|null, "maxDriveMinutes": number|null, "ages": number[], "freeOnly": boolean, "indoorPreference": "ממוזג"|"פתוח"|"לא משנה", "shabbatOnly": boolean, "keywords": string[]}. keywords = עד 3 מונחי חיפוש בעברית שמתאימים לבקשה. אם לא צוין דבר – השתמש ב-null/false/"לא משנה".',
+              'אתה מנתח בקשות של הורים בישראל למצוא פעילות לילדים. החזר JSON בלבד במבנה: {"city": string|null, "maxDriveMinutes": number|null, "ages": number[], "freeOnly": boolean, "budget": number|null, "indoorPreference": "ממוזג"|"פתוח"|"לא משנה", "shabbatOnly": boolean, "keywords": string[]}. budget = תקציב מקסימלי בשקלים למשפחה אם הוזכר. keywords = עד 3 מונחי חיפוש בעברית שמתאימים לבקשה. אם לא צוין דבר – השתמש ב-null/false/"לא משנה".',
           },
           { role: "user", content: data.prompt },
         ],
@@ -124,6 +124,7 @@ export const aiSearch = createServerFn({ method: "POST" })
         maxDriveMinutes: typeof parsed.maxDriveMinutes === "number" ? parsed.maxDriveMinutes : null,
         ages: Array.isArray(parsed.ages) ? (parsed.ages as unknown[]).filter((a): a is number => typeof a === "number") : [],
         freeOnly: parsed.freeOnly === true,
+        budget: typeof parsed.budget === "number" ? parsed.budget : null,
         indoorPreference:
           parsed.indoorPreference === "ממוזג" || parsed.indoorPreference === "פתוח" ? parsed.indoorPreference : "לא משנה",
         shabbatOnly: parsed.shabbatOnly === true,
