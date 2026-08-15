@@ -633,6 +633,7 @@ function Index() {
           setShabbatOnly(hit.list === indoorShabbat || hit.list === shabbatFriendly);
           setEnv(hit.list === indoorShabbat ? "ממוזג" : "all");
           setGoogleResults(byDistance(hit.list));
+          setResultsUpdatedAt(Date.now());
           setGoogleError(
             hit.note ? `${hit.note} · רדיוס ${quickRadius} ק"מ` : ""
           );
