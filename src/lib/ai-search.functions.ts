@@ -100,7 +100,7 @@ export const aiSearch = createServerFn({ method: "POST" })
     fallbackOrigin: data.fallbackOrigin ?? null,
   }))
   .handler(async ({ data }): Promise<AiSearchResult> => {
-    const empty: AiSearchResult = { summary: "", criteria: null, origin: null, places: [], reasons: {} };
+    const empty: AiSearchResult = { summary: "", criteria: null, origin: null, places: [], reasons: {}, checks: {}, priceEstimates: {} };
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) return { ...empty, error: "חסר מפתח AI" };
     if (!data.prompt) return { ...empty, error: "כתבו מה אתם מחפשים" };
