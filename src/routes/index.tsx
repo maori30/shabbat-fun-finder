@@ -583,6 +583,8 @@ function Index() {
     setGoogleError("");
     setSavedOnly(false);
     setAiReasons({});
+    setAiChecks({});
+    setAiPrices({});
     setAiSummary("");
 
     try {
