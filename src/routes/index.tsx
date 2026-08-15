@@ -372,21 +372,28 @@ function Index() {
     });
   };
 
-  const runAiSearch = async () => {
-    if (!aiPrompt.trim()) {
+  const runAiSearch = async (promptOverride?: string) => {
+    const prompt = (promptOverride ?? aiPrompt).trim();
+    if (!prompt) {
       setAiError("כתבו במשפט מה אתם מחפשים");
       return;
     }
     setAiLoading(true);
     setAiError("");
     setAiSummary("");
+    setSavedOnly(false);
     try {
-      const res = await aiSearchFn({ data: { prompt: aiPrompt.trim(), fallbackOrigin: origin } });
+      const res = await aiSearchFn({ data: { prompt, fallbackOrigin: origin } });
       if (res.error) setAiError(res.error);
       if (res.origin) setOrigin(res.origin);
       setAiSummary(res.summary ?? "");
       setAiReasons(res.reasons ?? {});
-      if (res.places.length > 0) setGoogleResults(res.places);
+      setAiChecks(res.checks ?? {});
+      setAiPrices(res.priceEstimates ?? {});
+      if (res.places.length > 0) {
+        setGoogleResults(res.places);
+        setResultsUpdatedAt(Date.now());
+      }
     } catch (e) {
       console.error(e);
       setAiError("שגיאה בחיפוש AI");
@@ -394,6 +401,7 @@ function Index() {
       setAiLoading(false);
     }
   };
+
 
   const runGoogleSearch = async () => {
     if (!origin) {
