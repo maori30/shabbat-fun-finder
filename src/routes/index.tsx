@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { searchPlaces, type PlaceResult } from "@/lib/places.functions";
 import { aiSearch } from "@/lib/ai-search.functions";
 import { ThemeToggle } from "@/components/glass/theme-toggle";
-import { CommunityReports } from "@/components/community-reports";
+import { PlaceCard } from "@/components/place-card";
+import { ShabbatMode } from "@/components/shabbat-mode";
 
 
 
