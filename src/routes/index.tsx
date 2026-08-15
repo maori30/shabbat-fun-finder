@@ -707,7 +707,16 @@ function Index() {
       </header>
 
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
+      <main className="mx-auto max-w-5xl px-4 py-6 space-y-4">
+        <ShabbatMode
+          originLabel={origin?.label ?? null}
+          loading={aiLoading}
+          onSearch={(prompt) => {
+            setAiPrompt(prompt);
+            void runAiSearch(prompt);
+          }}
+        />
+
         <section className="glass-panel rounded-2xl p-4">
           <h2 className="text-lg font-bold">✨ חיפוש חכם עם AI</h2>
           <p className="mt-1 text-sm text-muted-foreground">
