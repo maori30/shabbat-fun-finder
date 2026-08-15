@@ -9,6 +9,7 @@ export type AiCriteria = {
   maxDriveMinutes: number | null;
   ages: number[];
   freeOnly: boolean;
+  budget: number | null;
   indoorPreference: "ממוזג" | "פתוח" | "לא משנה";
   shabbatOnly: boolean;
   keywords: string[];
@@ -21,7 +22,12 @@ export type AiSearchResult = {
   origin: { lat: number; lng: number; label: string } | null;
   places: PlaceResult[];
   reasons: Record<string, string>;
+  /** Short "✓" bullet checks per place id, e.g. ["מתאים לגילאים 4–7", "ממוזג"] */
+  checks: Record<string, string[]>;
+  /** Rough family cost estimate per place id, e.g. "כ־120 ₪ למשפחה" */
+  priceEstimates: Record<string, string>;
 };
+
 
 async function callAi(messages: { role: string; content: string }[], apiKey: string) {
   const res = await fetch(AI_URL, {
@@ -94,7 +100,7 @@ export const aiSearch = createServerFn({ method: "POST" })
     fallbackOrigin: data.fallbackOrigin ?? null,
   }))
   .handler(async ({ data }): Promise<AiSearchResult> => {
-    const empty: AiSearchResult = { summary: "", criteria: null, origin: null, places: [], reasons: {} };
+    const empty: AiSearchResult = { summary: "", criteria: null, origin: null, places: [], reasons: {}, checks: {}, priceEstimates: {} };
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) return { ...empty, error: "חסר מפתח AI" };
     if (!data.prompt) return { ...empty, error: "כתבו מה אתם מחפשים" };
@@ -107,7 +113,7 @@ export const aiSearch = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              'אתה מנתח בקשות של הורים בישראל למצוא פעילות לילדים. החזר JSON בלבד במבנה: {"city": string|null, "maxDriveMinutes": number|null, "ages": number[], "freeOnly": boolean, "indoorPreference": "ממוזג"|"פתוח"|"לא משנה", "shabbatOnly": boolean, "keywords": string[]}. keywords = עד 3 מונחי חיפוש בעברית שמתאימים לבקשה. אם לא צוין דבר – השתמש ב-null/false/"לא משנה".',
+              'אתה מנתח בקשות של הורים בישראל למצוא פעילות לילדים. החזר JSON בלבד במבנה: {"city": string|null, "maxDriveMinutes": number|null, "ages": number[], "freeOnly": boolean, "budget": number|null, "indoorPreference": "ממוזג"|"פתוח"|"לא משנה", "shabbatOnly": boolean, "keywords": string[]}. budget = תקציב מקסימלי בשקלים למשפחה אם הוזכר. keywords = עד 3 מונחי חיפוש בעברית שמתאימים לבקשה. אם לא צוין דבר – השתמש ב-null/false/"לא משנה".',
           },
           { role: "user", content: data.prompt },
         ],
@@ -118,6 +124,7 @@ export const aiSearch = createServerFn({ method: "POST" })
         maxDriveMinutes: typeof parsed.maxDriveMinutes === "number" ? parsed.maxDriveMinutes : null,
         ages: Array.isArray(parsed.ages) ? (parsed.ages as unknown[]).filter((a): a is number => typeof a === "number") : [],
         freeOnly: parsed.freeOnly === true,
+        budget: typeof parsed.budget === "number" ? parsed.budget : null,
         indoorPreference:
           parsed.indoorPreference === "ממוזג" || parsed.indoorPreference === "פתוח" ? parsed.indoorPreference : "לא משנה",
         shabbatOnly: parsed.shabbatOnly === true,
@@ -211,7 +218,7 @@ export const aiSearch = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              'בחר עד 8 המקומות המתאימים ביותר לבקשת ההורה מתוך הרשימה. החזר JSON בלבד: {"summary": string, "picks": [{"id": string, "reason": string}]}. summary = משפט אחד בעברית שמסביר מה חיפשנו ומה מצאנו. reason = עד 15 מילים בעברית למה זה מתאים (גיל, מרחק, מיזוג, שבת, עלות).',
+              'אתה עוזר להורה להחליט מה לעשות עם הילדים – לא רק לרשום אפשרויות. בחר עד 6 מקומות מהרשימה, כשהראשון הוא הבחירה הטובה ביותר. החזר JSON בלבד: {"summary": string, "picks": [{"id": string, "reason": string, "checks": string[], "priceEstimate": string}]}. summary = משפט אחד בעברית שמסביר מה חיפשנו ומה מצאנו. reason = משפט קצר בעברית שמתחיל ב"למה בחרנו בזה:" ומסביר בדיוק למה זה מתאים להורה הזה. checks = 3–5 פריטים קצרצרים בעברית לסימון ✓, למשל "מתאים לגילאים 4–7", "פתוח בשבת", "ממוזג", "18 דקות נסיעה". priceEstimate = הערכת עלות בעברית כמו "כ־120 ₪ למשפחה" או "חינם", ואם אין מידע – "מחיר לא ידוע".',
           },
           {
             role: "user",
@@ -220,14 +227,24 @@ export const aiSearch = createServerFn({ method: "POST" })
         ],
         apiKey,
       );
-      const picks = Array.isArray(ranked.picks) ? (ranked.picks as { id?: string; reason?: string }[]) : [];
+      const picks = Array.isArray(ranked.picks)
+        ? (ranked.picks as { id?: string; reason?: string; checks?: unknown; priceEstimate?: unknown }[])
+        : [];
       const reasons: Record<string, string> = {};
+      const checks: Record<string, string[]> = {};
+      const priceEstimates: Record<string, string> = {};
       const ordered: PlaceResult[] = [];
       for (const pick of picks) {
         const place = candidates.find((p) => p.id === pick.id);
         if (place && !ordered.includes(place)) {
           ordered.push(place);
           if (pick.reason) reasons[place.id] = pick.reason;
+          if (Array.isArray(pick.checks)) {
+            checks[place.id] = (pick.checks as unknown[])
+              .filter((c): c is string => typeof c === "string")
+              .slice(0, 5);
+          }
+          if (typeof pick.priceEstimate === "string") priceEstimates[place.id] = pick.priceEstimate;
         }
       }
       const places = ordered.length > 0 ? ordered : candidates.slice(0, 8);
@@ -237,9 +254,20 @@ export const aiSearch = createServerFn({ method: "POST" })
         origin,
         places,
         reasons,
+        checks,
+        priceEstimates,
       };
     } catch (e) {
       console.error(e);
-      return { summary: "", criteria, origin, places: candidates.slice(0, 8), reasons: {} };
+      return {
+        summary: "",
+        criteria,
+        origin,
+        places: candidates.slice(0, 8),
+        reasons: {},
+        checks: {},
+        priceEstimates: {},
+      };
     }
   });
+
