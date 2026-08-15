@@ -717,7 +717,7 @@ function Index() {
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
-              onClick={runAiSearch}
+              onClick={() => runAiSearch()}
               disabled={aiLoading}
               className="glass-btn-primary rounded-2xl px-6 py-3 text-base font-bold disabled:opacity-70 inline-flex items-center gap-2"
             >
