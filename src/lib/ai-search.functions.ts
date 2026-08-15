@@ -9,6 +9,7 @@ export type AiCriteria = {
   maxDriveMinutes: number | null;
   ages: number[];
   freeOnly: boolean;
+  budget: number | null;
   indoorPreference: "ממוזג" | "פתוח" | "לא משנה";
   shabbatOnly: boolean;
   keywords: string[];
@@ -21,7 +22,12 @@ export type AiSearchResult = {
   origin: { lat: number; lng: number; label: string } | null;
   places: PlaceResult[];
   reasons: Record<string, string>;
+  /** Short "✓" bullet checks per place id, e.g. ["מתאים לגילאים 4–7", "ממוזג"] */
+  checks: Record<string, string[]>;
+  /** Rough family cost estimate per place id, e.g. "כ־120 ₪ למשפחה" */
+  priceEstimates: Record<string, string>;
 };
+
 
 async function callAi(messages: { role: string; content: string }[], apiKey: string) {
   const res = await fetch(AI_URL, {
