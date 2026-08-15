@@ -461,6 +461,10 @@ function Index() {
         return cityA.localeCompare(cityB, "he") || a.name.localeCompare(b.name, "he");
       });
       setGoogleResults(sortedByDistance);
+      setResultsUpdatedAt(Date.now());
+      setAiReasons({});
+      setAiChecks({});
+      setAiPrices({});
     } catch (e) {
       setGoogleError("שגיאה בחיפוש");
       console.error(e);
