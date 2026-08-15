@@ -992,162 +992,42 @@ function Index() {
                 <span>⭐ הצג רק את הרשימה שלי ({savedPlaces.length})</span>
               </label>
             </div>
-            <section className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(savedOnly ? savedPlaces : googleResults ?? []).map((p) => {
-                const dist = origin ? distanceKm(origin, { lat: p.lat, lng: p.lng }) : null;
-                return (
-                  <article key={p.id} className="glass-card rounded-2xl p-4 transition-shadow overflow-hidden">
-                    {p.photoUri ? (
-                      <img
-                        src={p.photoUri}
-                        alt={p.name}
-                        loading="lazy"
-                        className="-m-4 mb-3 h-40 w-[calc(100%+2rem)] object-cover"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    ) : null}
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="text-3xl">{p.emoji}</div>
-                        <h2 className="mt-1 text-lg font-bold">{p.name}</h2>
-                        <div className="text-sm text-muted-foreground">
-                          {p.primaryType ?? "מקום"} {p.rating ? `· ⭐ ${p.rating} (${p.userRatingCount ?? 0})` : ""}
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleSavedPlace(p)}
-                          aria-pressed={isSavedPlace(p.id)}
-                          aria-label={isSavedPlace(p.id) ? "הסרה מהרשימה שלי" : "שמירה לרשימה שלי"}
-                          title={isSavedPlace(p.id) ? "הסרה מהרשימה שלי" : "שמירה לרשימה שלי"}
-                          className="glass-btn rounded-full px-2.5 py-1.5 text-lg leading-none transition-transform hover:scale-110 active:scale-95"
-                        >
-                          {isSavedPlace(p.id) ? "❤️" : "🤍"}
-                        </button>
-                      {(p.openShabbat !== null || p.saturdayHours) && (
-                        <button
-                          type="button"
-                          onClick={() => p.saturdayHours && setExpandedSaturdayDetails((current) => current === p.id ? null : p.id)}
-                          aria-expanded={expandedSaturdayDetails === p.id}
-                          className={`shrink-0 transition-opacity ${
-                            (p.openShabbat || p.saturdayHours)
-                              ? "glass-badge-success"
-                              : "glass-badge-danger"
-                          } ${p.saturdayHours ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
-                          title={p.saturdayHours ? "לחצו להצגת שעות פתיחה וסגירה בשבת" : "שעות מדויקות אינן זמינות"}
-                        >
-                          {(p.openShabbat || p.saturdayHours) ? "פתוח בשבת" : "סגור בשבת"}
-                        </button>
-                      )}
-                      </div>
-                    </div>
-                    {expandedSaturdayDetails === p.id && p.saturdayHours && (
-                      <div className="mt-2 text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1">
-                        שעות פתיחה וסגירה בשבת: <span className="font-semibold text-foreground">🕒 {p.saturdayHours}</span>
-                      </div>
-                    )}
-                    {aiReasons[p.id] && (
-                      <p className="mt-2 text-sm font-medium text-foreground">✨ {aiReasons[p.id]}</p>
-                    )}
-                    {p.description && (
-                      <p className="mt-2 text-sm text-foreground/80">{p.description}</p>
-                    )}
-                    {p.address && (
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {p.address
-                          .replace(/,?\s*ישראל\s*$/u, "")
-                          .replace(/,?\s*\d{5,8}\s*(?=,|$)/gu, "")
-                          .replace(/,\s*,/g, ",")
-                          .trim()}
-                      </p>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                      {dist !== null && (
-                        <span className="glass-badge-info">
-                          📏 {dist.toFixed(1)} ק"מ
-                        </span>
-                      )}
-                      {dist !== null && (
-                        <span className="glass-badge-warning">
-                          🚗 ~{Math.max(1, Math.round(dist))} דק'
-                        </span>
-                      )}
-                      {p.openNow !== null && (
-                        <span className={p.openNow ? "glass-badge-success" : "glass-badge-neutral"}>
-                          {p.openNow ? "🟢 פתוח עכשיו" : "⚫ סגור עכשיו"}
-                        </span>
-                      )}
-                      {p.environment && (
-                        <span className="glass-badge">
-                          {p.environment === "ממוזג" ? "❄️ ממוזג" : p.environment === "פתוח" ? "☀️ פתוח" : "🔀 משולב"}
-                        </span>
-                      )}
-                      {p.ageRange && (
-                        <span className="glass-badge">
-                          👶 גילאי {p.ageRange.min}–{p.ageRange.max}
-                        </span>
-                      )}
-                      {p.price && (
-                        <span className="glass-badge-warning">
-                          🎟️ {p.price}
-                        </span>
-                      )}
-                      {p.isSoftDemoted && (
-                        <span className="glass-badge-warning">
-                          ⚠️ בדקו שעות אטרקציה פנימית (פעלטון/קולנוע)
-                        </span>
-                      )}
-                    </div>
+            {(() => {
+              const list = savedOnly ? savedPlaces : googleResults ?? [];
+              const ranked = !savedOnly && Object.keys(aiReasons).length > 0;
+              const card = (p: PlaceResult, index: number) => (
+                <PlaceCard
+                  key={p.id}
+                  place={p}
+                  distanceKm={origin ? distanceKm(origin, { lat: p.lat, lng: p.lng }) : null}
+                  rank={ranked ? index + 1 : null}
+                  reason={aiReasons[p.id]}
+                  checks={aiChecks[p.id]}
+                  priceEstimate={aiPrices[p.id]}
+                  saved={isSavedPlace(p.id)}
+                  onToggleSave={() => toggleSavedPlace(p)}
+                  updatedAt={resultsUpdatedAt}
+                  saturdayOpen={expandedSaturdayDetails === p.id}
+                  onToggleSaturday={() =>
+                    setExpandedSaturdayDetails((current) => (current === p.id ? null : p.id))
+                  }
+                />
+              );
+              return (
+                <div className="mt-3 space-y-4">
+                  {ranked && list.length > 0 && (
+                    <div className="mx-auto max-w-2xl">{card(list[0]!, 0)}</div>
+                  )}
+                  {ranked && list.length > 1 && (
+                    <h2 className="pt-2 text-base font-bold">עוד אפשרויות מתאימות</h2>
+                  )}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {(ranked ? list.slice(1) : list).map((p, i) => card(p, ranked ? i + 2 : i))}
+                  </div>
+                </div>
+              );
+            })()}
 
-                    <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-                      {p.todayHours ? (
-                        <span className="text-muted-foreground whitespace-nowrap" title="שעות פתיחה וסגירה היום">
-                          🕒 היום {p.todayHours}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground/70">🕒 שעות: בדקו באתר או ב-Google</span>
-                      )}
-                      {p.saturdayHours ? (
-                        <span className="text-muted-foreground/70">לחצו על תגית שבת לפירוט</span>
-                      ) : <span />}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                      <a
-                        href={p.mapsUri}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="glass-link glass-link-maps"
-                      >
-                        🗺️ פתח ב-Google Maps
-                      </a>
-                      <a
-                        href={`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="glass-link glass-link-waze"
-                      >
-                        🧭 וויז
-                      </a>
-                      {p.websiteUri && (
-                        <a
-                          href={p.websiteUri}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="glass-link"
-                        >
-                          🔗 אתר
-                        </a>
-                      )}
-                    </div>
-                    <CommunityReports placeId={p.id} placeName={p.name} />
-                  </article>
-
-                );
-              })}
-            </section>
             {(savedOnly ? savedPlaces.length === 0 : googleResults?.length === 0) && !googleLoading && (
               <div className="glass-empty mt-8 rounded-2xl p-8 text-center text-muted-foreground">
                 {savedOnly
