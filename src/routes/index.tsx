@@ -336,6 +336,9 @@ function Index() {
   const [aiSummary, setAiSummary] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiReasons, setAiReasons] = useState<Record<string, string>>({});
+  const [aiChecks, setAiChecks] = useState<Record<string, string[]>>({});
+  const [aiPrices, setAiPrices] = useState<Record<string, string>>({});
+  const [resultsUpdatedAt, setResultsUpdatedAt] = useState<number | null>(null);
   // Saved places (works for Google/AI results, which have string ids —
   // separate from the numeric-id favorites of the built-in attractions).
   const [savedPlaces, setSavedPlaces] = useState<PlaceResult[]>([]);
