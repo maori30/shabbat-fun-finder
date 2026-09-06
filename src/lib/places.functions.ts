@@ -574,7 +574,8 @@ export const searchPlaces = createServerFn({ method: "POST" })
                 emoji: pickEmoji(["tourist_attraction"], item.name),
                 stroller_accessible: item.stroller_accessible,
                 changing_table: item.changing_table,
-                easy_parking: item.easy_parking
+                easy_parking: item.easy_parking,
+                isSoftDemoted: false
               });
             }
           }
