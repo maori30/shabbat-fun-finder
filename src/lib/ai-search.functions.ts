@@ -29,24 +29,45 @@ export type AiSearchResult = {
 };
 
 
-async function callAi(messages: { role: string; content: string }[], apiKey: string) {
-  const res = await fetch(AI_URL, {
+async function callAi(messages: { role: string; content: string }[], apiKey?: string) {
+  const lovableKey = process.env.LOVABLE_API_KEY || apiKey;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+
+  if (!lovableKey && !geminiKey) {
+    throw new Error("חסר מפתח AI");
+  }
+
+  const endpoint = geminiKey 
+    ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" 
+    : "https://ai.gateway.lovable.dev/v1/chat/completions";
+    
+  const model = geminiKey ? "gemini-2.5-flash" : "openai/gpt-5.6-sol";
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (geminiKey) {
+    headers["Authorization"] = "Bearer " + geminiKey;
+  } else if (lovableKey) {
+    headers["Lovable-API-Key"] = lovableKey;
+  }
+
+  const res = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": apiKey,
-    },
+    headers,
     body: JSON.stringify({
-      model: MODEL,
-      reasoning_effort: "none",
-      messages,
+      model: model,
       response_format: { type: "json_object" },
+      messages,
     }),
   });
+  
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`AI ${res.status}: ${body.slice(0, 200)}`);
   }
+  
   const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const content = json.choices?.[0]?.message?.content ?? "{}";
   try {
@@ -101,8 +122,9 @@ export const aiSearch = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }): Promise<AiSearchResult> => {
     const empty: AiSearchResult = { summary: "", criteria: null, origin: null, places: [], reasons: {}, checks: {}, priceEstimates: {} };
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) return { ...empty, error: "חסר מפתח AI" };
+    const lovableKey = process.env.LOVABLE_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!lovableKey && !geminiKey) return { ...empty, error: "חסר מפתח AI. יש להגדיר GEMINI_API_KEY בסודות (Secrets) של הפרויקט." };
     if (!data.prompt) return { ...empty, error: "כתבו מה אתם מחפשים" };
 
     // 1) Understand the request
