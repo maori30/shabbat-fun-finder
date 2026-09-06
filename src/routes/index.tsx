@@ -221,6 +221,7 @@ function Index() {
   const [googleResults, setGoogleResults] = useState<PlaceResult[] | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string>("");
+  const [openNowLoading, setOpenNowLoading] = useState(false);
   const [weatherInfo, setWeatherInfo] = useState<{description: string, isHot: boolean, isRainy: boolean} | null>(null);
   const [itineraryLoading, setItineraryLoading] = useState(false);
   const [expandedSaturdayDetails, setExpandedSaturdayDetails] = useState<string | null>(null);

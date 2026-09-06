@@ -499,7 +499,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // (e.g. "קניון עזריאלי - פעלטון", "יס פלאנט", "Cinema City בתוך הקניון").
     const HIDDEN_ATTRACTION_NAME_HINT = /פעלטון|משחקיה|משחקייה|יס פלאנט|טרמפולין|סינמה|קולנוע|באולינג|ג'ימבורי|קידילנד|Cinema/i;
 
-    let finalPlaces = places
+    let finalPlaces: PlaceResult[] = places
       .filter((p) => {
         if (!data.activityMode) return true;
         const hasAttraction = p.types.some((t) => ATTRACTION_BOOST.has(t));
@@ -574,7 +574,8 @@ export const searchPlaces = createServerFn({ method: "POST" })
                 emoji: pickEmoji(["tourist_attraction"], item.name),
                 stroller_accessible: item.stroller_accessible,
                 changing_table: item.changing_table,
-                easy_parking: item.easy_parking
+                easy_parking: item.easy_parking,
+                isSoftDemoted: false
               });
             }
           }
@@ -586,7 +587,11 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // ------------------------------------------
 
     finalPlaces = [...supabasePlaces, ...finalPlaces];
-    return { places: finalPlaces.slice(0, 60) };
+    return {
+      places: finalPlaces
+        .slice(0, 60)
+        .map((p) => ({ ...p, isSoftDemoted: p.isSoftDemoted ?? false })),
+    };
   });
 
 
