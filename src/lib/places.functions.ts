@@ -1,3 +1,4 @@
+﻿import { createClient } from "@supabase/supabase-js";
 import { createServerFn } from "@tanstack/react-start";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
@@ -78,6 +79,9 @@ export type PlaceResult = {
   description: string | null;
   photoUri: string | null;
   emoji: string;
+  stroller_accessible?: boolean;
+  changing_table?: boolean;
+  easy_parking?: boolean;
 };
 
 const INDOOR_TYPES = new Set([
@@ -529,6 +533,59 @@ export const searchPlaces = createServerFn({ method: "POST" })
       return a.name.localeCompare(b.name, "he");
     });
 
+        // --- Hybrid Search: Fetch from Supabase ---
+    let supabasePlaces: PlaceResult[] = [];
+    const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      try {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { data: dbAttractions } = await supabase
+          .from('external_attractions')
+          .select('*')
+          .eq('is_approved', true);
+        
+        if (dbAttractions) {
+          for (const item of dbAttractions) {
+            // Distance filter
+            if (item.lat && item.lng && haversineKm(data.lat, data.lng, item.lat, item.lng) <= data.radius / 1000) {
+              supabasePlaces.push({
+                id: item.id,
+                name: item.name,
+                address: item.city || "",
+                lat: item.lat,
+                lng: item.lng,
+                rating: 5,
+                userRatingCount: 1,
+                mapsUri: item.source_url || "",
+                websiteUri: item.source_url || null,
+                primaryType: item.category,
+                primaryTypeId: "custom",
+                types: ["tourist_attraction"],
+                openNow: null,
+                openShabbat: item.open_shabbat,
+                saturdayHours: null,
+                todayHours: null,
+                environment: item.environment,
+                ageRange: item.min_age && item.max_age ? { min: item.min_age, max: item.max_age } : null,
+                price: null,
+                description: item.description,
+                photoUri: null,
+                emoji: pickEmoji(["tourist_attraction"], item.name),
+                stroller_accessible: item.stroller_accessible,
+                changing_table: item.changing_table,
+                easy_parking: item.easy_parking
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Supabase fetch failed", e);
+      }
+    }
+    // ------------------------------------------
+
+    finalPlaces = [...supabasePlaces, ...finalPlaces];
     return { places: finalPlaces.slice(0, 60) };
   });
 
@@ -569,3 +626,4 @@ export const geocodeCity = createServerFn({ method: "POST" })
       label: place.displayName?.text ?? data.cityName,
     };
   });
+

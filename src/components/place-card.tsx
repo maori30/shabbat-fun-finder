@@ -182,6 +182,15 @@ export function PlaceCard({
         <span className="glass-badge">
           👶 {p.ageRange ? `גילאי ${p.ageRange.min}–${p.ageRange.max}` : "גילאים לא אומתו"}
         </span>
+        {p.stroller_accessible && (
+          <span className="glass-badge-success">♿ נגיש לעגלות</span>
+        )}
+        {p.changing_table && (
+          <span className="glass-badge-info">🍼 פינת החתלה</span>
+        )}
+        {p.easy_parking && (
+          <span className="glass-badge-info">🅿️ חניה נוחה</span>
+        )}
         {p.isSoftDemoted && (
           <span className="glass-badge-warning">⚠️ בדקו שעות אטרקציה פנימית (פעלטון/קולנוע)</span>
         )}
@@ -209,6 +218,15 @@ export function PlaceCard({
           className="glass-link glass-link-waze"
         >
           🧭 וויז
+        </a>
+        <a
+          href={`whatsapp://send?text=${encodeURIComponent(`חשבתי שניסע ל${p.name} בשבת! 🎈\nזה פתוח, ${p.environment === "ממוזג" ? "ממוזג" : "כיף"}, ונמצא במרחק של בערך ${dist ? driveMinutes(dist) : "?"} דקות נסיעה מאיתנו.\n\nלינק לוויז: https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="glass-link"
+          style={{ backgroundColor: "#25D366", color: "white", borderColor: "#1DA851" }}
+        >
+          💬 שתף בוואטסאפ
         </a>
         {p.websiteUri && (
           <a href={p.websiteUri} target="_blank" rel="noopener noreferrer" className="glass-link">

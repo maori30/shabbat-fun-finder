@@ -3,9 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { searchPlaces, type PlaceResult } from "@/lib/places.functions";
 import { aiSearch } from "@/lib/ai-search.functions";
+import { SuggestAttraction } from "../components/suggest-attraction";
+
 import { ThemeToggle } from "@/components/glass/theme-toggle";
 import { PlaceCard } from "@/components/place-card";
 import { ShabbatMode } from "@/components/shabbat-mode";
+import { getWeekendWeather } from "@/lib/weather.functions";
 
 
 
@@ -59,114 +62,7 @@ export const Route = createFileRoute("/")({
 });
 
 
-type Attraction = {
-  id: number;
-  name: string;
-  city: string;
-  region: "צפון" | "מרכז" | "דרום" | "ירושלים";
-  category: string;
-  openShabbat: boolean;
-  environment: "ממוזג" | "פתוח" | "משולב";
-  minAge: number;
-  maxAge: number;
-  description: string;
-  emoji: string;
-  lat: number;
-  lng: number;
-  url?: string;
-  price?: string;
-};
-
-const ATTRACTIONS: Attraction[] = [
-  { id: 1, name: "מוזיאון המדע ע\"ש בלומפילד", city: "ירושלים", region: "ירושלים", category: "מוזיאון", openShabbat: false, environment: "ממוזג", minAge: 4, maxAge: 16, description: "תערוכות מדע אינטראקטיביות לכל המשפחה.", emoji: "🔬", lat: 31.7767, lng: 35.1975, url: "https://www.mada.org.il/" },
-  { id: 2, name: "לונה פארק סופרלנד", city: "ראשון לציון", region: "מרכז", category: "פארק שעשועים", openShabbat: false, environment: "פתוח", minAge: 3, maxAge: 16, description: "מתקנים לכל הגילאים, קרוסלות ורכבות הרים.", emoji: "🎢", lat: 31.9730, lng: 34.7925, url: "https://www.superland.co.il/" },
-  { id: 3, name: "ספארי רמת גן", city: "רמת גן", region: "מרכז", category: "גן חיות", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 16, description: "טיול ברכב בין חיות בר וגן חיות מטופח.", emoji: "🦁", lat: 32.0787, lng: 34.8137, url: "https://www.safari.co.il/", price: "החל מ־119 ₪ באתר" },
-  { id: 4, name: "מיני ישראל", city: "לטרון", region: "מרכז", category: "פארק", openShabbat: true, environment: "פתוח", minAge: 3, maxAge: 12, description: "דגמים זעירים של אתרים מפורסמים בישראל.", emoji: "🏛️", lat: 31.8386, lng: 34.9861, url: "https://www.minisrael.co.il/" },
-  { id: 5, name: "מוזיאון הילדים חולון", city: "חולון", region: "מרכז", category: "מוזיאון", openShabbat: false, environment: "ממוזג", minAge: 2, maxAge: 12, description: "חוויות והדמיות אינטראקטיביות לכל הגילאים.", emoji: "🎨", lat: 32.0158, lng: 34.7874, url: "https://www.childrensmuseum.org.il/" },
-  { id: 6, name: "ימית 2000 - פארק מים", city: "חולון", region: "מרכז", category: "פארק מים", openShabbat: true, environment: "פתוח", minAge: 3, maxAge: 16, description: "מגלשות מים, בריכות ופעילויות רטובות.", emoji: "🏊", lat: 32.0089, lng: 34.7745, url: "https://www.ymit2000.co.il/" },
-  { id: 7, name: "גן גרו (Gan Garoo)", city: "עמק בית שאן", region: "צפון", category: "גן חיות", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 12, description: "פארק אוסטרלי - קנגורו, קואלה וחיות מקסימות.", emoji: "🦘", lat: 32.5133, lng: 35.5117, url: "https://gan-garoo.co.il/" },
-  { id: 8, name: "Jump טרמפולינות", city: "ראשון לציון", region: "מרכז", category: "טרמפולינות", openShabbat: true, environment: "ממוזג", minAge: 4, maxAge: 16, description: "אולם טרמפולינות ענק עם מסלולי אתגר.", emoji: "🤸", lat: 31.9945, lng: 34.7830, url: "https://www.jump.co.il/" },
-  { id: 9, name: "מצפה הכוכבים גבעתיים", city: "גבעתיים", region: "מרכז", category: "מדע", openShabbat: true, environment: "משולב", minAge: 6, maxAge: 16, description: "צפייה בכוכבים והרצאות אסטרונומיה.", emoji: "🔭", lat: 32.0719, lng: 34.8103, url: "https://www.givatayim-observatory.co.il/" },
-  { id: 10, name: "חוות התאומים", city: "מודיעין", region: "מרכז", category: "חווה", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 10, description: "האכלת חיות משק ופעילויות בטבע.", emoji: "🐐", lat: 31.8969, lng: 35.0104 },
-  { id: 11, name: "אתר החרמון", city: "נווה אטי\"ב", region: "צפון", category: "טבע", openShabbat: true, environment: "משולב", minAge: 5, maxAge: 16, description: "חוויה שלגית ומתקני אתגר בפסגת הצפון.", emoji: "🏔️", lat: 33.2833, lng: 35.7833, url: "https://www.skihermon.co.il/" },
-  { id: 12, name: "גן החיות התנ\"כי ירושלים", city: "ירושלים", region: "ירושלים", category: "גן חיות", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 14, description: "גן חיות עם דגש על חיות מהתנ\"ך.", emoji: "🦒", lat: 31.7451, lng: 35.1806, url: "https://www.jerusalemzoo.org.il/" },
-  { id: 13, name: "פארק הכרמל", city: "חיפה", region: "צפון", category: "טבע", openShabbat: true, environment: "פתוח", minAge: 3, maxAge: 16, description: "טיולים, פיקניקים ומסלולים משפחתיים.", emoji: "🌲", lat: 32.7333, lng: 35.0333 },
-  { id: 14, name: "פארק תמנע", city: "אילת", region: "דרום", category: "טבע", openShabbat: true, environment: "פתוח", minAge: 4, maxAge: 16, description: "אתגרים גיאולוגיים ופעילויות מדבר.", emoji: "🏜️", lat: 29.7500, lng: 34.9500, url: "https://www.parktimna.co.il/" },
-  { id: 15, name: "האקווריום הצוללת אילת", city: "אילת", region: "דרום", category: "אקווריום", openShabbat: true, environment: "משולב", minAge: 2, maxAge: 14, description: "צפייה בשונית האלמוגים מתחת למים.", emoji: "🐡", lat: 29.5033, lng: 34.9200, url: "https://www.coralworld.co.il/" },
-  { id: 16, name: "אקסטרים פארק פ\"ת", city: "פתח תקווה", region: "מרכז", category: "פארק אתגרים", openShabbat: true, environment: "פתוח", minAge: 6, maxAge: 16, description: "מסלולי נינג'ה, אומגות וקירות טיפוס.", emoji: "🧗", lat: 32.0878, lng: 34.8878 },
-  { id: 17, name: "iClimb חיפה", city: "חיפה", region: "צפון", category: "טיפוס", openShabbat: true, environment: "ממוזג", minAge: 5, maxAge: 16, description: "קירות טיפוס בולדרינג וקווי חבל.", emoji: "🧗‍♀️", lat: 32.7940, lng: 34.9896, url: "https://iclimb.co.il/" },
-  { id: 18, name: "פארק אריאל שרון (הירקון)", city: "תל אביב", region: "מרכז", category: "פארק", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "מרחבים ירוקים, אגם ומסלולי אופניים.", emoji: "🚴", lat: 32.0500, lng: 34.8000 },
-  { id: 19, name: "יער בן שמן", city: "בן שמן", region: "מרכז", category: "טבע", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 16, description: "פיקניק, אופניים ופינות משחק ביער.", emoji: "🌳", lat: 31.9556, lng: 34.9247 },
-  { id: 20, name: "פארק המים שפיים", city: "שפיים", region: "מרכז", category: "פארק מים", openShabbat: true, environment: "פתוח", minAge: 2, maxAge: 16, description: "בריכות ומגלשות מים בקיבוץ שפיים.", emoji: "💦", lat: 32.3350, lng: 34.8319, url: "https://www.shefayim.co.il/waterpark/" },
-  { id: 21, name: "מדעטק חיפה", city: "חיפה", region: "צפון", category: "מוזיאון", openShabbat: true, environment: "ממוזג", minAge: 4, maxAge: 16, description: "מוצגי מדע אינטראקטיביים לכל המשפחה.", emoji: "⚗️", lat: 32.7935, lng: 34.9895, url: "https://www.madatech.org.il/", price: "84 ₪ ברכישה באתר" },
-  { id: 22, name: "פארק שרונה", city: "תל אביב", region: "מרכז", category: "פארק", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "מתחם ירוק עם מזרקה, מסעדות ומגרשים.", emoji: "⛲", lat: 32.0722, lng: 34.7855 },
-  { id: 23, name: "נמל תל אביב", city: "תל אביב", region: "מרכז", category: "טיילת", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "טיילת עם משחקים, אוכל וים.", emoji: "⚓", lat: 32.0996, lng: 34.7719, url: "https://www.namal.co.il/" },
-  { id: 24, name: "גן לאומי אשקלון", city: "אשקלון", region: "דרום", category: "פארק לאומי", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 16, description: "טיולים, ארכיאולוגיה וחוף ים.", emoji: "🏖️", lat: 31.6688, lng: 34.5715 },
-  { id: 25, name: "חוות סוסים בשרון", city: "רעננה", region: "מרכז", category: "רכיבה", openShabbat: true, environment: "פתוח", minAge: 4, maxAge: 16, description: "שיעורי רכיבה וטיולים בטבע.", emoji: "🐴", lat: 32.1900, lng: 34.8750 },
-  { id: 26, name: "מוזיאון ארץ ישראל", city: "תל אביב", region: "מרכז", category: "מוזיאון", openShabbat: true, environment: "משולב", minAge: 4, maxAge: 14, description: "מוזיאון עם תערוכות ופעילויות לילדים.", emoji: "🏺", lat: 32.1035, lng: 34.7955, url: "https://www.eretzmuseum.org.il/" },
-  { id: 27, name: "קיאקי כפר בלום", city: "כפר בלום", region: "צפון", category: "פארק מים", openShabbat: true, environment: "פתוח", minAge: 5, maxAge: 16, description: "רפטינג וקיאקים על נהר הירדן.", emoji: "🛶", lat: 33.1789, lng: 35.6100, url: "https://www.kayak.co.il/" },
-  { id: 28, name: "לונה גל", city: "חוף גולן", region: "צפון", category: "פארק מים", openShabbat: true, environment: "פתוח", minAge: 3, maxAge: 16, description: "פארק מים על חוף הכנרת.", emoji: "🌀", lat: 32.8619, lng: 35.6486, url: "https://www.lunagal.co.il/" },
-  { id: 29, name: "פארק הירקון", city: "תל אביב", region: "מרכז", category: "פארק", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "פארק ענק עם סירות, אופניים ופינות משחק.", emoji: "🌿", lat: 32.1000, lng: 34.8100 },
-  { id: 30, name: "מגדל דוד - מוזיאון", city: "ירושלים", region: "ירושלים", category: "מוזיאון", openShabbat: true, environment: "משולב", minAge: 5, maxAge: 16, description: "סיור בהיסטוריה של ירושלים.", emoji: "🏰", lat: 31.7761, lng: 35.2278, url: "https://www.tod.org.il/" },
-
-  // --- קניונים וקולנוע ---
-  { id: 31, name: "קניון עזריאלי תל אביב", city: "תל אביב", region: "מרכז", category: "קניון", openShabbat: false, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון גדול עם קולנוע, מסעדות וארקייד.", emoji: "🛍️", lat: 32.0745, lng: 34.7920, url: "https://www.azrieli.com/mall/azrieli-tel-aviv/" },
-  { id: 32, name: "קניון איילון", city: "רמת גן", region: "מרכז", category: "קניון", openShabbat: false, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון ענק עם קולנוע וסניפי בילוי לילדים.", emoji: "🛒", lat: 32.0847, lng: 34.8014, url: "https://www.ayalonmall.co.il/" },
-  { id: 33, name: "קניון גרנד חיפה", city: "חיפה", region: "צפון", category: "קניון", openShabbat: true, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון פתוח בשבת עם קולנוע ומסעדות.", emoji: "🏬", lat: 32.7940, lng: 35.0350, url: "https://www.grandkanyon.co.il/" },
-  { id: 34, name: "קניון הזהב ראשל\"צ", city: "ראשון לציון", region: "מרכז", category: "קניון", openShabbat: false, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון עם ארקייד וקולנוע.", emoji: "🛍️", lat: 31.9930, lng: 34.7750, url: "https://www.hazahav.co.il/" },
-  { id: 35, name: "ביג פאשן אשדוד", city: "אשדוד", region: "דרום", category: "קניון", openShabbat: true, environment: "ממוזג", minAge: 0, maxAge: 16, description: "מרכז קניות פתוח בשבת עם מתחם בילוי.", emoji: "🏬", lat: 31.7920, lng: 34.6510, url: "https://big.co.il/" },
-  { id: 36, name: "סינמה סיטי גלילות", city: "רמת השרון", region: "מרכז", category: "קולנוע", openShabbat: true, environment: "ממוזג", minAge: 4, maxAge: 16, description: "מתחם קולנוע ענק עם ארקייד ובילוי משפחתי.", emoji: "🎬", lat: 32.1585, lng: 34.8060, url: "https://www.cinema-city.co.il/" },
-  { id: 37, name: "סינמה סיטי ראשל\"צ", city: "ראשון לציון", region: "מרכז", category: "קולנוע", openShabbat: true, environment: "ממוזג", minAge: 4, maxAge: 16, description: "קולנוע רב אולמות עם מתחם משחקים.", emoji: "🎥", lat: 31.9840, lng: 34.7810, url: "https://www.cinema-city.co.il/" },
-  { id: 38, name: "יס פלאנט ראשל\"צ", city: "ראשון לציון", region: "מרכז", category: "קולנוע", openShabbat: true, environment: "ממוזג", minAge: 4, maxAge: 16, description: "קומפלקס קולנוע ובילוי משפחתי.", emoji: "🍿", lat: 31.9970, lng: 34.7810, url: "https://www.yesplanet.co.il/" },
-  { id: 39, name: "אייס מול אילת", city: "אילת", region: "דרום", category: "קניון", openShabbat: true, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון פתוח בשבת בטיילת אילת עם מתחם קרח.", emoji: "🧊", lat: 29.5560, lng: 34.9530, url: "https://www.icemall.co.il/" },
-  { id: 40, name: "קניון מלחה", city: "ירושלים", region: "ירושלים", category: "קניון", openShabbat: false, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון גדול עם קולנוע וארקייד.", emoji: "🏬", lat: 31.7515, lng: 35.1876, url: "https://www.jerusalem-mall.co.il/" },
-  { id: 41, name: "דיזנגוף סנטר", city: "תל אביב", region: "מרכז", category: "קניון", openShabbat: true, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון עם קולנוע, אוכל ובאולינג.", emoji: "🛍️", lat: 32.0770, lng: 34.7745, url: "https://dizengof-center.co.il/" },
-  { id: 42, name: "קניון סירקין פ\"ת", city: "פתח תקווה", region: "מרכז", category: "קניון", openShabbat: false, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון שכונתי עם משחקייה ומסעדות.", emoji: "🏬", lat: 32.0900, lng: 34.9060, url: "https://www.sirkin-mall.co.il/" },
-  { id: 43, name: "קניון אבנת פ\"ת", city: "פתח תקווה", region: "מרכז", category: "קניון", openShabbat: false, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון עם קולנוע יס פלאנט ובילוי משפחתי.", emoji: "🛒", lat: 32.1050, lng: 34.8770, url: "https://avnat-mall.co.il/" },
-  { id: 44, name: "יס פלאנט קניון אבנת", city: "פתח תקווה", region: "מרכז", category: "קולנוע", openShabbat: false, environment: "ממוזג", minAge: 4, maxAge: 16, description: "מתחם קולנוע ובילוי בקניון אבנת.", emoji: "🎬", lat: 32.1050, lng: 34.8770, url: "https://www.yesplanet.co.il/" },
-  { id: 45, name: "TLV Fashion Mall", city: "תל אביב", region: "מרכז", category: "קניון", openShabbat: false, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון בילוי, מסעדות וארקייד.", emoji: "🛍️", lat: 32.0568, lng: 34.7626, url: "https://www.tlv-mall.co.il/" },
-  { id: 46, name: "רמת אביב מול", city: "תל אביב", region: "מרכז", category: "קניון", openShabbat: false, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון עם ילדופיה, קולנוע ומסעדות.", emoji: "🛍️", lat: 32.1123, lng: 34.7962, url: "https://www.ramat-aviv-mall.co.il/" },
-  { id: 47, name: "ביג פאשן גלילות", city: "רמת השרון", region: "מרכז", category: "קניון", openShabbat: true, environment: "ממוזג", minAge: 0, maxAge: 16, description: "מתחם קניות ופנאי פתוח בשבת.", emoji: "🏬", lat: 32.1560, lng: 34.8050, url: "https://big.co.il/" },
-  { id: 48, name: "קניון סי מול אשדוד", city: "אשדוד", region: "דרום", category: "קניון", openShabbat: true, environment: "ממוזג", minAge: 0, maxAge: 16, description: "קניון בחוף אשדוד פתוח בשבת.", emoji: "🌊", lat: 31.7840, lng: 34.6350, url: "https://seamall.co.il/" },
-
-  // --- משחקיות ומתחמים סגורים לילדים (אמת) ---
-  { id: 49, name: "פעלטון קניון סירקין פ\"ת", city: "פתח תקווה", region: "מרכז", category: "משחקייה", openShabbat: false, environment: "ממוזג", minAge: 1, maxAge: 10, description: "משחקייה מקורה בקניון סירקין - מגלשות ובריכות כדורים.", emoji: "🎈", lat: 32.0900, lng: 34.9060, url: "https://www.paalton.co.il/" },
-  { id: 50, name: "פעלטון קניון הדר פ\"ת", city: "פתח תקווה", region: "מרכז", category: "משחקייה", openShabbat: false, environment: "ממוזג", minAge: 1, maxAge: 10, description: "משחקייה מקורה גדולה עם מתקני שעשוע.", emoji: "🎪", lat: 32.0870, lng: 34.8890, url: "https://www.paalton.co.il/" },
-  { id: 51, name: "פאן פאן ראשל\"צ", city: "ראשון לציון", region: "מרכז", category: "משחקייה", openShabbat: true, environment: "ממוזג", minAge: 1, maxAge: 10, description: "משחקייה ענקית ומתקנים לילדים.", emoji: "🎠", lat: 31.9850, lng: 34.7830, url: "https://funfun.co.il/" },
-  { id: 52, name: "ג'מבורי בנימינה", city: "בנימינה", region: "צפון", category: "משחקייה", openShabbat: true, environment: "ממוזג", minAge: 1, maxAge: 10, description: "משחקייה מקורה עם מגלשות ובריכת כדורים.", emoji: "🧸", lat: 32.5170, lng: 34.9540 },
-  { id: 53, name: "קידילנד ראשל\"צ", city: "ראשון לציון", region: "מרכז", category: "משחקייה", openShabbat: true, environment: "ממוזג", minAge: 1, maxAge: 8, description: "משחקייה עירונית לילדים קטנים.", emoji: "🎡", lat: 31.9800, lng: 34.7850 },
-  { id: 54, name: "מונקי פארק - חיפה", city: "חיפה", region: "צפון", category: "משחקייה", openShabbat: true, environment: "ממוזג", minAge: 1, maxAge: 10, description: "מתחם משחקים מקורה עם מגלשות אתגר.", emoji: "🐒", lat: 32.7900, lng: 35.0100 },
-  { id: 55, name: "קידס אילנד נתניה", city: "נתניה", region: "מרכז", category: "משחקייה", openShabbat: true, environment: "ממוזג", minAge: 1, maxAge: 10, description: "משחקייה ענקית ובית קפה להורים.", emoji: "🎪", lat: 32.3215, lng: 34.8532 },
-
-  // --- באולינג, קארטינג, לייזר טאג, בריחה, VR ---
-  { id: 56, name: "באולינג דיזנגוף סנטר", city: "תל אביב", region: "מרכז", category: "באולינג", openShabbat: true, environment: "ממוזג", minAge: 5, maxAge: 16, description: "מסלולי באולינג, ארקייד ומשחקי חברה.", emoji: "🎳", lat: 32.0770, lng: 34.7745, url: "https://www.bowling.co.il/" },
-  { id: 57, name: "באולינג באר שבע", city: "באר שבע", region: "דרום", category: "באולינג", openShabbat: true, environment: "ממוזג", minAge: 5, maxAge: 16, description: "מסלולי באולינג ואולם ארקייד.", emoji: "🎳", lat: 31.2518, lng: 34.7913 },
-  { id: 58, name: "קארטינג רעננה", city: "רעננה", region: "מרכז", category: "קארטינג", openShabbat: true, environment: "פתוח", minAge: 7, maxAge: 16, description: "מסלול קארטינג משפחתי במהירויות שונות.", emoji: "🏎️", lat: 32.1847, lng: 34.8708, url: "https://www.karting-raanana.co.il/" },
-  { id: 59, name: "קארטינג אילת (מוטו פארק)", city: "אילת", region: "דרום", category: "קארטינג", openShabbat: true, environment: "פתוח", minAge: 7, maxAge: 16, description: "מסלול קארטינג באילת.", emoji: "🏁", lat: 29.5400, lng: 34.9500 },
-  { id: 60, name: "לייזר טאג הרצליה", city: "הרצליה", region: "מרכז", category: "לייזר טאג", openShabbat: true, environment: "ממוזג", minAge: 6, maxAge: 16, description: "משחק לייזר טאג באולם חשוך ומגניב.", emoji: "🔫", lat: 32.1663, lng: 34.8438 },
-  { id: 61, name: "Questomatica חדרי בריחה", city: "תל אביב", region: "מרכז", category: "חדר בריחה", openShabbat: true, environment: "ממוזג", minAge: 10, maxAge: 16, description: "חדרי בריחה מרובי חדרים ומשימות.", emoji: "🗝️", lat: 32.0668, lng: 34.7788, url: "https://www.questomatica.com/" },
-  { id: 62, name: "VR פארק תל אביב", city: "תל אביב", region: "מרכז", category: "VR", openShabbat: true, environment: "ממוזג", minAge: 8, maxAge: 16, description: "מציאות מדומה, חדרי משחק וסימולטורים.", emoji: "🥽", lat: 32.0700, lng: 34.7900 },
-  { id: 63, name: "פארק הקרח (Ice Peaks) אילת", city: "אילת", region: "דרום", category: "החלקה על הקרח", openShabbat: true, environment: "ממוזג", minAge: 4, maxAge: 16, description: "מגלשות קרח והחלקה במדבר.", emoji: "⛸️", lat: 29.5560, lng: 34.9520, url: "https://www.icepark.co.il/" },
-  { id: 64, name: "קניון קרח קניון איילון", city: "רמת גן", region: "מרכז", category: "החלקה על הקרח", openShabbat: false, environment: "ממוזג", minAge: 4, maxAge: 16, description: "החלקה על הקרח בקניון איילון.", emoji: "❄️", lat: 32.0847, lng: 34.8014 },
-
-  // --- טבע ואטרקציות פתוחות ---
-  { id: 65, name: "פארק אוטופיה", city: "פארק התעשייה בת שלמה", region: "צפון", category: "גן צמחייה", openShabbat: true, environment: "משולב", minAge: 2, maxAge: 14, description: "גן אורכידאות טרופי עם מזרקות מוזיקליות.", emoji: "🌺", lat: 32.5900, lng: 34.9800, url: "https://www.utopiapark.co.il/" },
-  { id: 66, name: "חוות ההרפתקאות (רופין)", city: "אמק חפר", region: "מרכז", category: "פארק אתגרים", openShabbat: true, environment: "פתוח", minAge: 5, maxAge: 16, description: "אומגות, גשרים תלויים וקיר טיפוס.", emoji: "🪢", lat: 32.3800, lng: 34.9100 },
-  { id: 67, name: "פארק צפרות עמק החולה", city: "עמק החולה", region: "צפון", category: "טבע", openShabbat: true, environment: "פתוח", minAge: 3, maxAge: 16, description: "צפייה בציפורים ונופי אגם.", emoji: "🦩", lat: 33.0700, lng: 35.6100, url: "https://www.agamon-hula.co.il/" },
-  { id: 68, name: "אגמון החולה", city: "יסוד המעלה", region: "צפון", category: "טבע", openShabbat: true, environment: "פתוח", minAge: 2, maxAge: 16, description: "סיור בקלנועית או עגלה בין ציפורי הנדידה.", emoji: "🦆", lat: 33.0736, lng: 35.6033, url: "https://www.agamon-hula.co.il/" },
-  { id: 69, name: "גן לאומי קיסריה", city: "קיסריה", region: "צפון", category: "פארק לאומי", openShabbat: true, environment: "פתוח", minAge: 3, maxAge: 16, description: "אתר עתיקות רומאי על הים.", emoji: "🏛️", lat: 32.5000, lng: 34.8917, url: "https://www.caesarea.com/" },
-  { id: 70, name: "מערת הנטיפים", city: "בית שמש", region: "ירושלים", category: "טבע", openShabbat: true, environment: "משולב", minAge: 4, maxAge: 16, description: "מערת נטיפים מרהיבה בשמורת אבשלום.", emoji: "🕳️", lat: 31.7267, lng: 34.9767 },
-  { id: 71, name: "גן החיות הזואולוגי חי-פארק", city: "קריית מוצקין", region: "צפון", category: "גן חיות", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 12, description: "גן חיות משפחתי בצפון.", emoji: "🐨", lat: 32.8380, lng: 35.0800 },
-  { id: 72, name: "קליף (KALIA) גלישת קייטרים", city: "ים המלח", region: "דרום", category: "פארק מים", openShabbat: true, environment: "פתוח", minAge: 4, maxAge: 16, description: "פארק מים בקיבוץ קליה על ים המלח.", emoji: "🌊", lat: 31.7400, lng: 35.4600 },
-  { id: 73, name: "פארק דרום השרון (סיבים)", city: "יהוד", region: "מרכז", category: "פארק", openShabbat: true, environment: "פתוח", minAge: 1, maxAge: 12, description: "פארק ילדים ענק עם משחקיות ומסלולים.", emoji: "🛝", lat: 32.0342, lng: 34.8828 },
-  { id: 74, name: "מיצוב תרבות דוד המלך (מים בירושלים)", city: "ירושלים", region: "ירושלים", category: "טבע", openShabbat: false, environment: "משולב", minAge: 6, maxAge: 16, description: "מנהרות ומעיינות באתר עיר דוד.", emoji: "💧", lat: 31.7739, lng: 35.2354, url: "https://www.cityofdavid.org.il/" },
-  { id: 75, name: "פארק אשכול", city: "צפון הנגב", region: "דרום", category: "פארק לאומי", openShabbat: true, environment: "פתוח", minAge: 2, maxAge: 16, description: "בריכות, מגלשות ומרחבים ירוקים.", emoji: "🌴", lat: 31.3167, lng: 34.4667 },
-  { id: 76, name: "פארק בריאות (חוות נועם)", city: "מודיעין", region: "מרכז", category: "חווה", openShabbat: true, environment: "פתוח", minAge: 2, maxAge: 12, description: "חוות טיפולית עם חיות משק ופעילויות.", emoji: "🐑", lat: 31.9000, lng: 35.0100 },
-  { id: 77, name: "בית האמנים ראשל\"צ", city: "ראשון לציון", region: "מרכז", category: "אמנות", openShabbat: true, environment: "ממוזג", minAge: 4, maxAge: 14, description: "סדנאות אמנות לילדים.", emoji: "🎨", lat: 31.9700, lng: 34.7900 },
-  { id: 78, name: "טיילת נתניה", city: "נתניה", region: "מרכז", category: "טיילת", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "טיילת חוף עם רכבל, מזרקות ומתקנים.", emoji: "🚡", lat: 32.3300, lng: 34.8500 },
-  { id: 79, name: "טיילת חוף אשדוד (לידו)", city: "אשדוד", region: "דרום", category: "טיילת", openShabbat: true, environment: "פתוח", minAge: 0, maxAge: 16, description: "טיילת חוף עם מתקני משחק.", emoji: "🏖️", lat: 31.7930, lng: 34.6350 },
-  { id: 80, name: "רכבל חיפה - סטלה מאריס", city: "חיפה", region: "צפון", category: "טיילת", openShabbat: true, environment: "משולב", minAge: 2, maxAge: 16, description: "רכבל מהחוף לראש הכרמל.", emoji: "🚠", lat: 32.8280, lng: 34.9700 },
-];
+import { Attraction, ATTRACTIONS } from "../data/attractions";
 
 // Known city centers for "search near city" without geolocation
 const CATEGORIES = Array.from(new Set(ATTRACTIONS.map((a) => a.category))).sort();
@@ -324,9 +220,9 @@ function Index() {
   const [showFavOnly, setShowFavOnly] = useState(false);
   const [googleResults, setGoogleResults] = useState<PlaceResult[] | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [openNowLoading, setOpenNowLoading] = useState(false);
-
   const [googleError, setGoogleError] = useState<string>("");
+  const [weatherInfo, setWeatherInfo] = useState<{description: string, isHot: boolean, isRainy: boolean} | null>(null);
+  const [itineraryLoading, setItineraryLoading] = useState(false);
   const [expandedSaturdayDetails, setExpandedSaturdayDetails] = useState<string | null>(null);
   const [activityMode, setActivityMode] = useState<boolean>(false);
   const searchPlacesFn = useServerFn(searchPlaces);
@@ -399,6 +295,38 @@ function Index() {
       setAiError("שגיאה בחיפוש AI");
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  const runItinerarySearch = async () => {
+    if (!origin) {
+      setAiError("אנא בחרו מיקום קודם כדי שנבנה לכם מסלול הגיוני");
+      return;
+    }
+    setAiLoading(true);
+    setItineraryLoading(true);
+    setAiError("");
+    setAiSummary("");
+    setSavedOnly(false);
+    try {
+      const prompt = "תבנה מסלול שלם לשבת (בוקר, צהריים, אחהצ). מזג אוויר: .";
+      const res = await aiSearchFn({ data: { prompt, fallbackOrigin: origin } });
+      if (res.error) setAiError(res.error);
+      setAiSummary("הנה הצעה למסלול מלא לשבת הקרובה! 🎲\n" + (res.summary ?? ""));
+      setAiReasons(res.reasons ?? {});
+      setAiChecks(res.checks ?? {});
+      setAiPrices(res.priceEstimates ?? {});
+      if (res.places.length > 0) {
+        setGoogleResults(res.places);
+        setResultsUpdatedAt(Date.now());
+      } else {
+        setGoogleResults([]);
+      }
+    } catch (err) {
+      setAiError("תקלה בבניית המסלול");
+    } finally {
+      setAiLoading(false);
+      setItineraryLoading(false);
     }
   };
 
@@ -516,6 +444,12 @@ function Index() {
     setDidAutoLocate(true);
     useMyLocation(true);
   }, [didAutoLocate, origin]);
+
+  useEffect(() => {
+    if (origin) {
+      getWeekendWeather(origin.lat, origin.lng).then(setWeatherInfo);
+    }
+  }, [origin]);
 
   const toggleFav = (id: number) =>
     setFavorites((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
@@ -703,11 +637,17 @@ function Index() {
           <p className="mt-2 text-base md:text-lg opacity-90">
             מוצאים אטרקציות לילדים – כולל אלה שפתוחות בשבת, ממוזגות או בחוץ, ולפי גיל וקרבה אליכם
           </p>
+          {weatherInfo && (
+            <div className={`mt-4 inline-block px-4 py-2 rounded-full font-bold text-sm ${weatherInfo.isHot ? 'bg-orange-500/20 text-orange-900 dark:text-orange-100' : weatherInfo.isRainy ? 'bg-blue-500/20 text-blue-900 dark:text-blue-100' : 'bg-green-500/20 text-green-900 dark:text-green-100'}`}>
+              {weatherInfo.description}
+            </div>
+          )}
         </div>
       </header>
 
 
       <main className="mx-auto max-w-5xl px-4 py-6 space-y-4">
+        <SuggestAttraction />
         <ShabbatMode
           originLabel={origin?.label ?? null}
           loading={aiLoading}
@@ -737,7 +677,14 @@ function Index() {
               disabled={aiLoading}
               className="glass-btn-primary rounded-2xl px-6 py-3 text-base font-bold disabled:opacity-70 inline-flex items-center gap-2"
             >
-              {aiLoading ? "ה-AI מחפש בשבילכם..." : "✨ מצא לי פעילות מתאימה"}
+              {aiLoading && !itineraryLoading ? "ה-AI מחפש בשבילכם..." : "✨ מצא לי פעילות מתאימה"}
+            </button>
+            <button
+              onClick={runItinerarySearch}
+              disabled={aiLoading}
+              className="rounded-2xl px-6 py-3 text-base font-bold disabled:opacity-70 inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-lg"
+            >
+              {itineraryLoading ? "בונה מסלול..." : "🎲 תבנה לי את השבת"}
             </button>
             {aiPrompt && (
               <button
@@ -1082,3 +1029,7 @@ function Index() {
     </div>
   );
 }
+
+
+
+
