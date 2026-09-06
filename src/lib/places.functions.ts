@@ -499,7 +499,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // (e.g. "קניון עזריאלי - פעלטון", "יס פלאנט", "Cinema City בתוך הקניון").
     const HIDDEN_ATTRACTION_NAME_HINT = /פעלטון|משחקיה|משחקייה|יס פלאנט|טרמפולין|סינמה|קולנוע|באולינג|ג'ימבורי|קידילנד|Cinema/i;
 
-    let finalPlaces = places
+    let finalPlaces: PlaceResult[] = places
       .filter((p) => {
         if (!data.activityMode) return true;
         const hasAttraction = p.types.some((t) => ATTRACTION_BOOST.has(t));
