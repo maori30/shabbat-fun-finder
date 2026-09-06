@@ -587,7 +587,11 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // ------------------------------------------
 
     finalPlaces = [...supabasePlaces, ...finalPlaces];
-    return { places: finalPlaces.slice(0, 60) };
+    return {
+      places: finalPlaces
+        .slice(0, 60)
+        .map((p) => ({ ...p, isSoftDemoted: p.isSoftDemoted ?? false })),
+    };
   });
 
 
