@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      external_attractions: {
+        Row: {
+          category: string | null
+          changing_table: boolean
+          city: string | null
+          created_at: string
+          description: string | null
+          easy_parking: boolean
+          environment: string | null
+          id: string
+          is_approved: boolean
+          lat: number | null
+          lng: number | null
+          max_age: number | null
+          min_age: number | null
+          name: string
+          open_shabbat: boolean | null
+          source_url: string | null
+          stroller_accessible: boolean
+        }
+        Insert: {
+          category?: string | null
+          changing_table?: boolean
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          easy_parking?: boolean
+          environment?: string | null
+          id?: string
+          is_approved?: boolean
+          lat?: number | null
+          lng?: number | null
+          max_age?: number | null
+          min_age?: number | null
+          name: string
+          open_shabbat?: boolean | null
+          source_url?: string | null
+          stroller_accessible?: boolean
+        }
+        Update: {
+          category?: string | null
+          changing_table?: boolean
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          easy_parking?: boolean
+          environment?: string | null
+          id?: string
+          is_approved?: boolean
+          lat?: number | null
+          lng?: number | null
+          max_age?: number | null
+          min_age?: number | null
+          name?: string
+          open_shabbat?: boolean | null
+          source_url?: string | null
+          stroller_accessible?: boolean
+        }
+        Relationships: []
+      }
       place_reports: {
         Row: {
           created_at: string
