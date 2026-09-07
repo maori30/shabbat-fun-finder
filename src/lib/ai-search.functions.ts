@@ -142,9 +142,7 @@ export const aiSearch = createServerFn({ method: "POST" })
               'אתה מנתח בקשות של הורים בישראל למצוא פעילות לילדים. החזר JSON בלבד במבנה: {"city": string|null, "maxDriveMinutes": number|null, "ages": number[], "freeOnly": boolean, "budget": number|null, "indoorPreference": "ממוזג"|"פתוח"|"לא משנה", "shabbatOnly": boolean, "keywords": string[]}. budget = תקציב מקסימלי בשקלים למשפחה אם הוזכר. keywords = עד 3 מונחי חיפוש בעברית שמתאימים לבקשה. אם לא צוין דבר – השתמש ב-null/false/"לא משנה".',
           },
           { role: "user", content: data.prompt },
-        ],
-        apiKey,
-      );
+        ]);
       criteria = {
         city: typeof parsed.city === "string" ? parsed.city : null,
         maxDriveMinutes: typeof parsed.maxDriveMinutes === "number" ? parsed.maxDriveMinutes : null,
@@ -250,9 +248,7 @@ export const aiSearch = createServerFn({ method: "POST" })
             role: "user",
             content: `בקשה: ${data.prompt}\nיוצאים מ: ${origin.label}\nמקומות: ${JSON.stringify(shortlist)}`,
           },
-        ],
-        apiKey,
-      );
+        ]);
       const picks = Array.isArray(ranked.picks)
         ? (ranked.picks as { id?: string; reason?: string; checks?: unknown; priceEstimate?: unknown }[])
         : [];
@@ -288,6 +284,8 @@ export const aiSearch = createServerFn({ method: "POST" })
       return { summary: "הייתה שגיאה בדירוג: " + (e instanceof Error ? e.message : String(e)), criteria, origin, places: candidates.slice(0, 8), reasons: {}, checks: {}, priceEstimates: {} };
     }
   });
+
+
 
 
 
