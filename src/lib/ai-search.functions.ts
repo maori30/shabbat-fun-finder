@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+﻿import { createServerFn } from "@tanstack/react-start";
 import { geocodeCity, searchPlaces, type PlaceResult } from "@/lib/places.functions";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -41,7 +41,7 @@ async function callAi(messages: { role: string; content: string }[], apiKey?: st
     ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" 
     : "https://ai.gateway.lovable.dev/v1/chat/completions";
     
-  const model = geminiKey ? "gemini-2.5-flash" : "openai/gpt-5.6-sol";
+  const model = geminiKey ? "gemini-2.0-flash" : "openai/gpt-5.6-sol";
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -122,8 +122,12 @@ export const aiSearch = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }): Promise<AiSearchResult> => {
     const empty: AiSearchResult = { summary: "", criteria: null, origin: null, places: [], reasons: {}, checks: {}, priceEstimates: {} };
-    const lovableKey = process.env.LOVABLE_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    const lovableKey = typeof process !== 'undefined' ? process.env.LOVABLE_API_KEY : undefined;
+  let geminiKey = typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY) : undefined;
+  
+  if (!geminiKey && typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    geminiKey = (import.meta as any).env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
+  }
     if (!lovableKey && !geminiKey) return { ...empty, error: "חסר מפתח AI. יש להגדיר GEMINI_API_KEY בסודות (Secrets) של הפרויקט." };
     if (!data.prompt) return { ...empty, error: "כתבו מה אתם מחפשים" };
 
@@ -292,4 +296,7 @@ export const aiSearch = createServerFn({ method: "POST" })
       };
     }
   });
+
+
+
 
