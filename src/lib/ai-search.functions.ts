@@ -41,7 +41,7 @@ async function callAi(messages: { role: string; content: string }[], apiKey?: st
     ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" 
     : "https://ai.gateway.lovable.dev/v1/chat/completions";
     
-  const model = geminiKey ? "gemini-1.5-flash" : "openai/gpt-5.6-sol";
+  const model = geminiKey ? "gemini-3.8-flash" : "openai/gpt-5.6-sol";
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -284,6 +284,7 @@ export const aiSearch = createServerFn({ method: "POST" })
       return { summary: "הייתה שגיאה בדירוג: " + (e instanceof Error ? e.message : String(e)), criteria, origin, places: candidates.slice(0, 8), reasons: {}, checks: {}, priceEstimates: {} };
     }
   });
+
 
 
 
