@@ -31,27 +31,18 @@ export type AiSearchResult = {
 
 async function callAi(messages: { role: string; content: string }[], apiKey?: string) {
   const lovableKey = process.env.LOVABLE_API_KEY || apiKey;
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
-  if (!lovableKey && !geminiKey) {
+  if (!lovableKey) {
     throw new Error("חסר מפתח AI");
   }
 
-  const endpoint = geminiKey 
-    ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" 
-    : "https://ai.gateway.lovable.dev/v1/chat/completions";
-    
-  const model = geminiKey ? "gemini-3.8-flash" : "openai/gpt-5.6-sol";
+  const endpoint = AI_URL;
+  const model = MODEL;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Lovable-API-Key": lovableKey,
   };
-
-  if (geminiKey) {
-    headers["Authorization"] = "Bearer " + geminiKey;
-  } else if (lovableKey) {
-    headers["Lovable-API-Key"] = lovableKey;
-  }
 
   const res = await fetch(endpoint, {
     method: "POST",
