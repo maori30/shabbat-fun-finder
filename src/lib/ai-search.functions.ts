@@ -31,27 +31,18 @@ export type AiSearchResult = {
 
 async function callAi(messages: { role: string; content: string }[], apiKey?: string) {
   const lovableKey = process.env.LOVABLE_API_KEY || apiKey;
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
-  if (!lovableKey && !geminiKey) {
+  if (!lovableKey) {
     throw new Error("חסר מפתח AI");
   }
 
-  const endpoint = geminiKey 
-    ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" 
-    : "https://ai.gateway.lovable.dev/v1/chat/completions";
-    
-  const model = geminiKey ? "gemini-3.8-flash" : "openai/gpt-5.6-sol";
+  const endpoint = AI_URL;
+  const model = MODEL;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Lovable-API-Key": lovableKey,
   };
-
-  if (geminiKey) {
-    headers["Authorization"] = "Bearer " + geminiKey;
-  } else if (lovableKey) {
-    headers["Lovable-API-Key"] = lovableKey;
-  }
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -123,12 +114,7 @@ export const aiSearch = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<AiSearchResult> => {
     const empty: AiSearchResult = { summary: "", criteria: null, origin: null, places: [], reasons: {}, checks: {}, priceEstimates: {} };
     const lovableKey = typeof process !== 'undefined' ? process.env.LOVABLE_API_KEY : undefined;
-  let geminiKey = typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY) : undefined;
-  
-  if (!geminiKey && typeof import.meta !== 'undefined' && (import.meta as any).env) {
-    geminiKey = (import.meta as any).env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
-  }
-    if (!lovableKey && !geminiKey) return { ...empty, error: "חסר מפתח AI. יש להגדיר GEMINI_API_KEY בסודות (Secrets) של הפרויקט." };
+    if (!lovableKey) return { ...empty, error: "חסר מפתח AI." };
     if (!data.prompt) return { ...empty, error: "כתבו מה אתם מחפשים" };
 
     // 1) Understand the request
