@@ -114,12 +114,7 @@ export const aiSearch = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<AiSearchResult> => {
     const empty: AiSearchResult = { summary: "", criteria: null, origin: null, places: [], reasons: {}, checks: {}, priceEstimates: {} };
     const lovableKey = typeof process !== 'undefined' ? process.env.LOVABLE_API_KEY : undefined;
-  let geminiKey = typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY) : undefined;
-  
-  if (!geminiKey && typeof import.meta !== 'undefined' && (import.meta as any).env) {
-    geminiKey = (import.meta as any).env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
-  }
-    if (!lovableKey && !geminiKey) return { ...empty, error: "חסר מפתח AI. יש להגדיר GEMINI_API_KEY בסודות (Secrets) של הפרויקט." };
+    if (!lovableKey) return { ...empty, error: "חסר מפתח AI." };
     if (!data.prompt) return { ...empty, error: "כתבו מה אתם מחפשים" };
 
     // 1) Understand the request
