@@ -188,6 +188,9 @@ function attractionToPlaceResult(a: Attraction): PlaceResult {
     description: a.description,
     photoUri: null,
     emoji: a.emoji,
+    stroller_accessible: a.stroller_accessible,
+    changing_table: a.changing_table,
+    easy_parking: a.easy_parking,
   };
 }
 
@@ -310,7 +313,8 @@ function Index() {
     setAiSummary("");
     setSavedOnly(false);
     try {
-      const prompt = "תבנה מסלול שלם לשבת (בוקר, צהריים, אחהצ). מזג אוויר: .";
+      const weatherText = weatherInfo ? ` מזג אוויר צפוי: ${weatherInfo.description}.` : "";
+      const prompt = `תבנה מסלול שלם לשבת (בוקר, צהריים, אחהצ).${weatherText}`;
       const res = await aiSearchFn({ data: { prompt, fallbackOrigin: origin } });
       if (res.error) setAiError(res.error);
       setAiSummary("הנה הצעה למסלול מלא לשבת הקרובה! 🎲\n" + (res.summary ?? ""));
@@ -447,9 +451,9 @@ function Index() {
   }, [didAutoLocate, origin]);
 
   useEffect(() => {
-    if (origin) {
-      getWeekendWeather(origin.lat, origin.lng).then(setWeatherInfo);
-    }
+    const lat = origin?.lat ?? 32.0853;
+    const lng = origin?.lng ?? 34.7818;
+    getWeekendWeather(lat, lng).then(setWeatherInfo);
   }, [origin]);
 
   const toggleFav = (id: number) =>

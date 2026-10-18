@@ -1,8 +1,10 @@
-﻿import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from "@tanstack/react-start";
 import { geocodeCity, searchPlaces, type PlaceResult } from "@/lib/places.functions";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "openai/gpt-5.6-sol";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const GEMINI_MODEL = "gemini-3.8-flash";
 
 export type AiCriteria = {
   city: string | null;
@@ -28,45 +30,104 @@ export type AiSearchResult = {
   priceEstimates: Record<string, string>;
 };
 
+async function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function callAiWithRetry(
+  endpoint: string,
+  model: string,
+  headers: Record<string, string>,
+  messages: { role: string; content: string }[],
+  maxRetries = 2
+): Promise<Record<string, unknown>> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model,
+          response_format: { type: "json_object" },
+          messages,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        const err = new Error(`AI ${res.status}: ${body.slice(0, 200)}`);
+        // Retry on 503 (high demand) or 429 (rate limit)
+        if ((res.status === 503 || res.status === 429) && attempt < maxRetries) {
+          await delay(1000 * (attempt + 1));
+          continue;
+        }
+        throw err;
+      }
+
+      const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const content = json.choices?.[0]?.message?.content ?? "{}";
+      try {
+        return JSON.parse(content) as Record<string, unknown>;
+      } catch {
+        const match = content.match(/\{[\s\S]*\}/);
+        return match ? (JSON.parse(match[0]) as Record<string, unknown>) : {};
+      }
+    } catch (err) {
+      lastError = err as Error;
+      if (attempt < maxRetries) {
+        await delay(1000 * (attempt + 1));
+      }
+    }
+  }
+  throw lastError ?? new Error("AI request failed");
+}
 
 async function callAi(messages: { role: string; content: string }[], apiKey?: string) {
-  const lovableKey = process.env.LOVABLE_API_KEY || apiKey;
+  const lovableKey = typeof process !== 'undefined' ? (process.env.LOVABLE_API_KEY || apiKey) : apiKey;
+  let geminiKey = typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY) : undefined;
+  if (!geminiKey && typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    geminiKey = (import.meta as any).env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
+  }
 
-  if (!lovableKey) {
+  if (!lovableKey && !geminiKey) {
     throw new Error("חסר מפתח AI");
   }
 
-  const endpoint = AI_URL;
-  const model = MODEL;
+  // 1. Try Lovable API if key is present
+  if (lovableKey) {
+    try {
+      return await callAiWithRetry(
+        AI_URL,
+        MODEL,
+        {
+          "Content-Type": "application/json",
+          "Lovable-API-Key": lovableKey,
+        },
+        messages,
+        1
+      );
+    } catch (e) {
+      console.warn("Lovable AI Gateway failed, checking Gemini fallback...", e);
+      if (!geminiKey) throw e;
+    }
+  }
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "Lovable-API-Key": lovableKey,
-  };
-
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: model,
-      response_format: { type: "json_object" },
+  // 2. Try Gemini API as fallback or primary
+  if (geminiKey) {
+    return await callAiWithRetry(
+      GEMINI_URL,
+      GEMINI_MODEL,
+      {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${geminiKey}`,
+      },
       messages,
-    }),
-  });
-  
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`AI ${res.status}: ${body.slice(0, 200)}`);
+      2
+    );
   }
-  
-  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const content = json.choices?.[0]?.message?.content ?? "{}";
-  try {
-    return JSON.parse(content) as Record<string, unknown>;
-  } catch {
-    const match = content.match(/\{[\s\S]*\}/);
-    return match ? (JSON.parse(match[0]) as Record<string, unknown>) : {};
-  }
+
+  throw new Error("לא ניתן להשלים את פניית ה-AI");
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -114,7 +175,11 @@ export const aiSearch = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<AiSearchResult> => {
     const empty: AiSearchResult = { summary: "", criteria: null, origin: null, places: [], reasons: {}, checks: {}, priceEstimates: {} };
     const lovableKey = typeof process !== 'undefined' ? process.env.LOVABLE_API_KEY : undefined;
-    if (!lovableKey) return { ...empty, error: "חסר מפתח AI." };
+    let geminiKey = typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY) : undefined;
+    if (!geminiKey && typeof import.meta !== 'undefined' && (import.meta as any).env) {
+      geminiKey = (import.meta as any).env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
+    }
+    if (!lovableKey && !geminiKey) return { ...empty, error: "חסר מפתח AI." };
     if (!data.prompt) return { ...empty, error: "כתבו מה אתם מחפשים" };
 
     // 1) Understand the request
