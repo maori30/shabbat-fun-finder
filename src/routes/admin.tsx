@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { listSuggestions, reviewSuggestion, type PendingSuggestion } from "@/lib/admin.functions";
+import { parseCoords } from "@/lib/coords";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -11,15 +12,6 @@ export const Route = createFileRoute("/admin")({
 });
 
 const PASSWORD_KEY = "kids_admin_pw";
-
-/** Accepts "31.77, 35.21" or a Google Maps URL containing "@31.77,35.21". */
-function parseCoords(text: string): { lat: number; lng: number } | null {
-  const m = text.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
-  if (!m) return null;
-  const lat = Number(m[1]);
-  const lng = Number(m[2]);
-  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
-}
 
 function AdminPage() {
   const listFn = useServerFn(listSuggestions);

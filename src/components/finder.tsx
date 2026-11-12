@@ -11,12 +11,22 @@ import { SuggestAttraction } from "@/components/suggest-attraction";
 import { ThemeToggle } from "@/components/glass/theme-toggle";
 import { PlaceCard } from "@/components/place-card";
 import { ShabbatMode } from "@/components/shabbat-mode";
+import { AiPanel } from "@/components/finder/ai-panel";
+import { FiltersPanel } from "@/components/finder/filters-panel";
+import { ItineraryPanel } from "@/components/finder/itinerary-panel";
+import { LocationPanel } from "@/components/finder/location-panel";
+import { Spinner } from "@/components/finder/spinner";
+import {
+  attractionToPlaceResult,
+  getPosition,
+  readJson,
+  saveJson,
+  MAX_RADIUS_KM,
+  type Origin,
+  type RecentCity,
+} from "@/lib/finder-utils";
 import { fetchReportCounts, type ReportCounts } from "@/components/community-reports";
 
-type Origin = { lat: number; lng: number; label: string };
-type RecentCity = { cityName: string; result: Origin };
-
-const MAX_RADIUS_KM = 50;
 const POPULAR_CITIES = [
   "ירושלים",
   "תל אביב",
@@ -38,93 +48,6 @@ const POPULAR_CITIES = [
 const SAVED_KEY = "kids_saved_places";
 const LEGACY_FAVORITES_KEY = "kids_favorites";
 const RECENT_KEY = "kids_recent_city_searches";
-
-function attractionToPlaceResult(a: Attraction): PlaceResult {
-  return {
-    id: `local-${a.id}`,
-    name: a.name,
-    address: a.city,
-    lat: a.lat,
-    lng: a.lng,
-    rating: null,
-    userRatingCount: null,
-    mapsUri: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.name + " " + a.city)}`,
-    websiteUri: a.url ?? null,
-    primaryType: a.category,
-    primaryTypeId: null,
-    types: [],
-    openNow: null,
-    openShabbat: a.openShabbat,
-    saturdayHours: null,
-    todayHours: null,
-    environment: a.environment,
-    ageRange: { min: a.minAge, max: a.maxAge },
-    isSoftDemoted: false,
-    price: a.price ?? null,
-    description: a.description,
-    photoUri: null,
-    emoji: a.emoji,
-    stroller_accessible: a.stroller_accessible,
-    changing_table: a.changing_table,
-    easy_parking: a.easy_parking,
-  };
-}
-
-function saveJson(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* storage unavailable (private mode) — keep in memory only */
-  }
-}
-
-function readJson<T>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Resolve GPS position with a hard timeout — some devices/browsers block
- * location silently and never call either callback.
- */
-function getPosition(timeoutMs = 8000) {
-  return new Promise<Origin | null>((resolve) => {
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) return resolve(null);
-    let settled = false;
-    const done = (v: Origin | null) => {
-      if (settled) return;
-      settled = true;
-      resolve(v);
-    };
-    const timer = setTimeout(() => done(null), timeoutMs);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        clearTimeout(timer);
-        done({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: "המיקום שלי" });
-      },
-      () => {
-        clearTimeout(timer);
-        done(null);
-      },
-      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 300000 },
-    );
-  });
-}
-
-const Spinner = ({ className = "h-5 w-5" }: { className?: string }) => (
-  <svg className={`${className} animate-spin`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-    <path
-      className="opacity-90"
-      fill="currentColor"
-      d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2z"
-    />
-  </svg>
-);
 
 export function Finder({ initialCity }: { initialCity?: string } = {}) {
   // --- filters ---
@@ -651,301 +574,61 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
         />
 
         {/* Step 2 — describe it in your own words. */}
-        <section className="glass-panel rounded-2xl p-4">
-          <h2 className="text-lg font-bold">✨ ספרו לנו מה אתם מחפשים</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            משפט אחד מספיק – גילאי הילדים, מאיפה יוצאים, כמה זמן נסיעה ותקציב.
-          </p>
-          <textarea
-            value={aiPrompt}
-            onChange={(e) => setAiPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && !aiLoading) {
-                e.preventDefault();
-                void runAiSearch();
-              }
-            }}
-            rows={3}
-            maxLength={600}
-            aria-label="תיאור הפעילות שאתם מחפשים"
-            placeholder="לדוגמה: יש לנו שני ילדים בני 4 ו־7, אנחנו מראש העין, רוצים משהו עד 30 דקות נסיעה ובחינם"
-            className="glass-field mt-3 w-full rounded-xl px-4 py-3 text-base"
-          />
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <button
-                onClick={() => runAiSearch()}
-                disabled={aiLoading}
-                className="glass-btn-primary inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-base font-bold disabled:opacity-70"
-              >
-                {aiLoading && !itineraryLoading ? (
-                  <>
-                    <Spinner /> מחפשים בשבילכם...
-                  </>
-                ) : (
-                  "✨ מצא לי פעילות מתאימה"
-                )}
-              </button>
-              <span className="px-1 text-center text-xs text-muted-foreground">
-                רשימת מקומות מדורגת עם הסבר
-              </span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <button
-                onClick={runItinerarySearch}
-                disabled={aiLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-500 px-6 py-3 text-base font-bold text-white shadow-lg hover:from-purple-600 hover:to-indigo-600 disabled:opacity-70"
-              >
-                {itineraryLoading ? (
-                  <>
-                    <Spinner /> בונה מסלול...
-                  </>
-                ) : (
-                  "🎲 תבנה לי את השבת"
-                )}
-              </button>
-              <span className="px-1 text-center text-xs text-muted-foreground">
-                מסלול בוקר → צהריים → אחה״צ, לפי מזג האוויר
-              </span>
-            </div>
-          </div>
-          {(aiPrompt || aiSummary || aiError) && (
-            <div className="mt-2 text-center">
-              <button
-                onClick={() => {
-                  setAiPrompt("");
-                  resetAi();
-                }}
-                className="glass-btn inline-flex items-center gap-1 rounded-2xl px-4 py-1.5 text-xs"
-              >
-                ✕ נקה חיפוש
-              </button>
-            </div>
-          )}
-          {aiSummary && (
-            <div className="glass-panel mt-3 rounded-2xl p-3 text-sm">🤖 {aiSummary}</div>
-          )}
-          {aiError && (
-            <div role="alert" className="mt-2 text-sm text-rose-700 dark:text-rose-300">
-              {aiError}
-            </div>
-          )}
-        </section>
+        <AiPanel
+          aiPrompt={aiPrompt}
+          onPromptChange={setAiPrompt}
+          aiLoading={aiLoading}
+          itineraryLoading={itineraryLoading}
+          aiSummary={aiSummary}
+          aiError={aiError}
+          onSearch={() => void runAiSearch()}
+          onItinerary={() => void runItinerarySearch()}
+          onClear={() => {
+            setAiPrompt("");
+            resetAi();
+          }}
+        />
 
         {/* Step 3 — browse everything around a location. */}
-        <section className="glass-panel rounded-2xl p-4">
-          <h2 className="text-lg font-bold">📍 או חפשו לבד לפי מיקום</h2>
-          <div className="mt-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-            <button
-              onClick={runOpenNowNearby}
-              disabled={openNowLoading || (geoBlocked && !origin)}
-              className="glass-btn-primary rounded-2xl px-4 py-2 text-sm font-bold disabled:opacity-70"
-              title={geoBlocked && !origin ? "בחרו עיר קרובה כדי להפעיל" : undefined}
-            >
-              {openNowLoading
-                ? "מאתר בסביבה..."
-                : geoBlocked && origin
-                  ? `⚡ מה פתוח עכשיו סביב ${origin.label}`
-                  : "⚡ מה פתוח עכשיו בסביבתי"}
-            </button>
-            {!geoBlocked && (
-              <button
-                onClick={() => locateMe()}
-                className="glass-btn rounded-2xl px-3 py-2 text-sm"
-              >
-                📍 השתמשו במיקום שלי
-              </button>
-            )}
-            <span className="text-sm text-muted-foreground">או</span>
-            <select
-              value={nearCity}
-              onChange={(e) => pickCity(e.target.value)}
-              className="glass-select rounded-2xl px-3 py-2 text-sm"
-              aria-label="בחירת עיר קרובה"
-            >
-              <option value="">בחרו עיר...</option>
-              {cityNames.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void lookupCity();
-              }}
-            >
-              <input
-                value={cityInput}
-                onChange={(e) => setCityInput(e.target.value)}
-                placeholder="או הקלידו כל יישוב"
-                aria-label="הקלדת שם יישוב"
-                maxLength={80}
-                className="glass-field w-full min-w-0 rounded-2xl px-3 py-2 text-sm md:w-44"
-              />
-              <button
-                type="submit"
-                disabled={cityLookupLoading || !cityInput.trim()}
-                className="glass-btn rounded-2xl px-3 py-2 text-sm disabled:opacity-60"
-              >
-                {cityLookupLoading ? "..." : "קבע"}
-              </button>
-            </form>
-          </div>
-
-          <div className="mt-3 flex items-center gap-2">
-            <label htmlFor="radius-range" className="whitespace-nowrap text-sm">
-              רדיוס: {radius} ק"מ
-            </label>
-            <input
-              id="radius-range"
-              type="range"
-              min={5}
-              max={MAX_RADIUS_KM}
-              step={5}
-              value={Math.min(radius, MAX_RADIUS_KM)}
-              onChange={(e) => setRadius(Number(e.target.value))}
-              className="w-full accent-primary"
-            />
-            {origin && (
-              <button onClick={clearNearby} className="glass-btn rounded-2xl px-3 py-1.5 text-sm">
-                נקה מיקום
-              </button>
-            )}
-          </div>
-          {origin && (
-            <div className="mt-1 text-xs text-muted-foreground">
-              מחפשים עד {Math.min(radius, MAX_RADIUS_KM)} ק"מ מ־{origin.label}
-            </div>
-          )}
-          {geoStatus && (
-            <div
-              role="status"
-              className={`mt-2 text-sm ${
-                /^(מאתר|מחפשים סביב)/.test(geoStatus)
-                  ? "text-muted-foreground"
-                  : "text-rose-700 dark:text-rose-300"
-              }`}
-            >
-              {geoStatus}
-            </div>
-          )}
-
-          {recentCitySearches.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">🕘 אחרונים:</span>
-              {recentCitySearches.map((item) => (
-                <div
-                  key={item.cityName}
-                  className={`glass-chip inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-xs ${
-                    origin?.label === item.result.label ? "ring-2 ring-primary/60" : ""
-                  }`}
-                >
-                  <button onClick={() => selectRecentCity(item)} className="hover:underline">
-                    {item.cityName}
-                  </button>
-                  <button
-                    onClick={() => removeRecentCity(item.cityName)}
-                    aria-label={`הסר ${item.cityName} מהיסטוריית החיפושים`}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && origin && !searchLoading) void runGoogleSearch();
-              }}
-              placeholder="מה מחפשים? (לא חובה) – למשל: משחקייה, בריכה"
-              aria-label="חיפוש לפי שם או סוג מקום"
-              maxLength={100}
-              className="glass-field w-full min-w-0 rounded-xl px-3 py-2.5 text-sm sm:flex-1"
-            />
-            <button
-              onClick={runGoogleSearch}
-              disabled={searchLoading || !origin}
-              title={!origin ? "בחרו קודם מיקום" : undefined}
-              className="glass-btn-primary inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-base font-bold shadow-lg shadow-primary/30 transition-transform hover:scale-[1.03] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100"
-            >
-              {searchLoading ? (
-                <>
-                  <Spinner /> מחפש...
-                </>
-              ) : (
-                <>🔎 חפש אטרקציות</>
-              )}
-            </button>
-          </div>
-          <label className="glass-chip mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-sm">
-            <input
-              type="checkbox"
-              checked={activityMode}
-              onChange={(e) => setActivityMode(e.target.checked)}
-              className="accent-emerald-600"
-            />
-            <span>🎡 אטרקציות בלבד (בלי מסעדות ובתי קפה)</span>
-          </label>
-          {searchError && (
-            <div role="status" className="mt-2 text-sm text-rose-700 dark:text-rose-300">
-              {searchError}
-            </div>
-          )}
-        </section>
+        <LocationPanel
+          runOpenNowNearby={() => void runOpenNowNearby()}
+          openNowLoading={openNowLoading}
+          geoBlocked={geoBlocked}
+          origin={origin}
+          locateMe={() => void locateMe()}
+          nearCity={nearCity}
+          pickCity={pickCity}
+          cityNames={cityNames}
+          lookupCity={() => void lookupCity()}
+          cityInput={cityInput}
+          setCityInput={setCityInput}
+          cityLookupLoading={cityLookupLoading}
+          radius={radius}
+          setRadius={setRadius}
+          clearNearby={clearNearby}
+          geoStatus={geoStatus}
+          recentCitySearches={recentCitySearches}
+          selectRecentCity={selectRecentCity}
+          removeRecentCity={removeRecentCity}
+          query={query}
+          setQuery={setQuery}
+          searchLoading={searchLoading}
+          runGoogleSearch={() => void runGoogleSearch()}
+          activityMode={activityMode}
+          setActivityMode={setActivityMode}
+          searchError={searchError}
+        />
 
         {/* Filters — apply live to whatever list is on screen. */}
-        <details className="glass-panel group rounded-2xl p-4">
-          <summary className="cursor-pointer select-none text-sm font-semibold">
-            ⚙️ סינון התוצאות {activeFilterCount > 0 ? `(${activeFilterCount} פעילים)` : ""}
-          </summary>
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={shabbatOnly}
-                onChange={(e) => setShabbatOnly(e.target.checked)}
-                className="h-5 w-5 accent-primary"
-              />
-              בלי מקומות שסגורים בשבת
-            </label>
-            <select
-              value={age === "" ? "" : String(age)}
-              onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
-              className="glass-select rounded-xl px-3 py-2 text-sm"
-              aria-label="גיל הילד"
-            >
-              <option value="">כל הגילאים</option>
-              {Array.from({ length: 19 }, (_, i) => i).map((n) => (
-                <option key={n} value={n}>
-                  גיל {n}
-                </option>
-              ))}
-            </select>
-            <select
-              value={env}
-              onChange={(e) => setEnv(e.target.value as EnvFilter)}
-              className="glass-select rounded-xl px-3 py-2 text-sm"
-              aria-label="סינון לפי סביבה"
-            >
-              <option value="all">בפנים או בחוץ</option>
-              <option value="ממוזג">❄️ ממוזג / בפנים</option>
-              <option value="פתוח">🌳 בחוץ</option>
-              <option value="משולב">🔀 משולב</option>
-            </select>
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            מקומות שאין עליהם מידע (למשל שעות שבת לא ידועות) לא מוסתרים – הם מסומנים "לא אומת"
-            בכרטיס.
-          </p>
-        </details>
+        <FiltersPanel
+          shabbatOnly={shabbatOnly}
+          setShabbatOnly={setShabbatOnly}
+          age={age}
+          setAge={setAge}
+          env={env}
+          setEnv={setEnv}
+          activeFilterCount={activeFilterCount}
+        />
 
         {anyLoading && !results ? (
           <div
@@ -992,53 +675,12 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
             </div>
 
             {!savedOnly && itinerary && (
-              <div className="glass-panel mt-3 rounded-3xl p-4">
-                <h2 className="text-lg font-bold">🗓️ המסלול שלכם לשבת</h2>
-                <ol className="mt-3 space-y-3">
-                  {itinerary.map((stop, i) => {
-                    const place = placeById.get(stop.placeId);
-                    if (!place) return null;
-                    const prev = i > 0 ? placeById.get(itinerary[i - 1]!.placeId) : null;
-                    const hop = prev
-                      ? distanceKm(prev, place)
-                      : origin
-                        ? distanceKm(origin, place)
-                        : null;
-                    return (
-                      <li key={`${stop.slot}-${stop.placeId}`} className="flex gap-3">
-                        <div className="glass-badge-info h-fit shrink-0 text-xs font-bold">
-                          {stop.slot}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold">
-                            {place.emoji} {place.name}
-                          </div>
-                          {stop.tip && <div className="text-sm text-foreground/80">{stop.tip}</div>}
-                          <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                            {hop !== null && (
-                              <span>
-                                🚗 ~{Math.max(2, Math.round((hop / 45) * 60))} דק'{" "}
-                                {i === 0 ? "מהבית" : "מהתחנה הקודמת"}
-                              </span>
-                            )}
-                            <a
-                              href={`https://waze.com/ul?ll=${place.lat},${place.lng}&navigate=yes`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="glass-link glass-link-waze"
-                            >
-                              🧭 וויז
-                            </a>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-                {lunchTip && (
-                  <p className="glass-panel mt-3 rounded-2xl p-3 text-sm">🥪 {lunchTip}</p>
-                )}
-              </div>
+              <ItineraryPanel
+                itinerary={itinerary}
+                placeById={placeById}
+                origin={origin}
+                lunchTip={lunchTip}
+              />
             )}
 
             <div className="mt-3 space-y-4">
