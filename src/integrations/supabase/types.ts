@@ -112,7 +112,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      place_reports_recent_count: {
+        Args: { p_place_id: string }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
