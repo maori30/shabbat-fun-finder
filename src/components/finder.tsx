@@ -601,7 +601,7 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
   );
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background text-foreground">
+    <div dir="rtl" className="min-h-screen text-foreground">
       <div className="liquid-orb orb-a" aria-hidden="true" />
       <div className="liquid-orb orb-b" aria-hidden="true" />
       <div className="liquid-orb orb-c" aria-hidden="true" />

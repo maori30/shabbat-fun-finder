@@ -78,7 +78,7 @@ export function SuggestAttraction({
           {label}
         </Button>
       </DialogTrigger>
-      <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto">
+      <DialogContent dir="rtl" className="glass-dialog max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>הצעת אטרקציה חדשה</DialogTitle>
         </DialogHeader>
@@ -206,7 +206,7 @@ export function SuggestAttraction({
             </label>
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full">
+          <Button type="submit" disabled={loading} className="glass-btn-primary w-full rounded-2xl">
             {loading ? "שולח..." : "שליחה לאישור"}
           </Button>
         </form>

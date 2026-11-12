@@ -85,7 +85,7 @@ function AdminPage() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background px-4 py-8 text-foreground">
+    <div dir="rtl" className="min-h-screen px-4 py-8 text-foreground">
       <div className="mx-auto max-w-3xl space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">ניהול הצעות הורים</h1>
