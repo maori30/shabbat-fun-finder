@@ -14,7 +14,7 @@ import { FiltersPanel } from "@/components/finder/filters-panel";
 import { ItineraryPanel } from "@/components/finder/itinerary-panel";
 import { ManualSearchPanel } from "@/components/finder/manual-search-panel";
 import { PlanPanel } from "@/components/finder/plan-panel";
-import { buildPrompt, DEFAULT_PLAN } from "@/lib/prompt";
+import { buildHints, buildPrompt, DEFAULT_PLAN } from "@/lib/prompt";
 import { Spinner } from "@/components/finder/spinner";
 import {
   attractionToPlaceResult,
@@ -174,7 +174,14 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
     setSearchError("");
     setSearchStartedAt(Date.now());
     try {
-      const res = await aiSearchFn({ data: { prompt, fallbackOrigin: origin } });
+      const res = await aiSearchFn({
+        data: {
+          prompt,
+          fallbackOrigin: origin,
+          // Deep links (?q=) carry only text; card searches send every choice.
+          hints: promptOverride ? null : buildHints({ vibe, ages, drive, budget }),
+        },
+      });
       if (res.error) setAiError(res.error);
       if (res.origin) setOrigin(res.origin);
       setAiSummary(res.summary ?? "");
@@ -212,6 +219,7 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
           fallbackOrigin: origin,
           mode: "itinerary",
           weather: weatherInfo?.description ?? null,
+          hints: buildHints({ vibe, ages, drive, budget }),
         },
       });
       if (res.error) setAiError(res.error);

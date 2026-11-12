@@ -13,6 +13,8 @@ export type CandidateCriteria = {
   indoorPreference: "ממוזג" | "פתוח" | "לא משנה";
   shabbatOnly: boolean;
   keywords: string[];
+  /** Max family budget in ₪, if the parent set one. */
+  budget?: number | null;
 };
 
 // Types that are usually free (or free to enter).
@@ -88,7 +90,15 @@ function envMatches(p: PlaceResult, pref: CandidateCriteria["indoorPreference"])
 }
 
 const isFreeish = (p: PlaceResult) =>
-  p.types.some((t) => FREE_HINT_TYPES.has(t)) || FREE_NAME_HINT.test(p.name);
+  p.priceLevel === "FREE" ||
+  p.types.some((t) => FREE_HINT_TYPES.has(t)) ||
+  FREE_NAME_HINT.test(p.name);
+
+/** Unknown price passes; only places Google marks as expensive are dropped. */
+const fitsBudget = (p: PlaceResult, budget: number) =>
+  budget >= 300
+    ? p.priceLevel !== "VERY_EXPENSIVE"
+    : p.priceLevel !== "EXPENSIVE" && p.priceLevel !== "VERY_EXPENSIVE";
 
 /**
  * Keep places inside the radius, then narrow by Shabbat / ages / indoor /
@@ -101,6 +111,8 @@ export function selectCandidates(
   origin: { lat: number; lng: number },
   radiusKm: number,
   minKeep = 4,
+  /** Places found by the parent's own keywords/vibe — ranked higher. */
+  boostIds: ReadonlySet<string> = new Set(),
 ): PlaceResult[] {
   const soft = (list: PlaceResult[], pred: (p: PlaceResult) => boolean) => {
     const kept = list.filter(pred);
@@ -116,6 +128,7 @@ export function selectCandidates(
   }
   if (c.indoorPreference !== "לא משנה") list = soft(list, (p) => envMatches(p, c.indoorPreference));
   if (c.freeOnly) list = soft(list, isFreeish);
+  else if (c.budget) list = soft(list, (p) => fitsBudget(p, c.budget!));
 
   const score = (p: PlaceResult) => {
     let s = 0;
@@ -129,6 +142,8 @@ export function selectCandidates(
     )
       s += 1.5;
     if (p.rating) s += (p.rating - 3.5) * Math.log10(1 + (p.userRatingCount ?? 0));
+    if (boostIds.has(p.id)) s += 2;
+    if (c.freeOnly && isFreeish(p)) s += 1;
     if (p.isSoftDemoted) s -= 3;
     s -= distanceKm(origin, p) / 10; // ~1 point per 10 km
     return s;
@@ -137,7 +152,7 @@ export function selectCandidates(
 }
 
 /** AI picks first (in AI order), then the remaining candidates. */
-export function mergePicks(pickIds: string[], candidates: PlaceResult[], max = 24): PlaceResult[] {
+export function mergePicks(pickIds: string[], candidates: PlaceResult[], max = 40): PlaceResult[] {
   const byId = new Map(candidates.map((p) => [p.id, p]));
   const out: PlaceResult[] = [];
   for (const id of pickIds) {

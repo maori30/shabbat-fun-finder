@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { geocodeCity, searchPlaces, type PlaceResult } from "@/lib/places.functions";
 import { distanceKm } from "@/lib/geo";
-import { mergePicks, planQueries, selectCandidates } from "@/lib/ai-candidates";
+import { cleanKeywords, mergePicks, planQueries, selectCandidates } from "@/lib/ai-candidates";
+import type { SearchHints } from "@/lib/prompt";
 import { allowRequest, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -159,6 +160,31 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   return distanceKm({ lat: lat1, lng: lng1 }, { lat: lat2, lng: lng2 });
 }
 
+function sanitizeHints(h: Partial<SearchHints> | null | undefined): SearchHints | null {
+  if (!h || typeof h !== "object") return null;
+  const num = (v: unknown, lo: number, hi: number) =>
+    typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : null;
+  return {
+    keywords: Array.isArray(h.keywords)
+      ? h.keywords
+          .filter((k): k is string => typeof k === "string")
+          .map((k) => k.slice(0, 40))
+          .slice(0, 3)
+      : [],
+    indoorPreference:
+      h.indoorPreference === "ממוזג" || h.indoorPreference === "פתוח" ? h.indoorPreference : null,
+    ages: Array.isArray(h.ages)
+      ? h.ages
+          .map((a) => num(a, 0, 18))
+          .filter((a): a is number => a !== null)
+          .slice(0, 6)
+      : [],
+    maxDriveMinutes: num(h.maxDriveMinutes, 5, 180) ?? 0,
+    freeOnly: h.freeOnly === true,
+    budget: num(h.budget, 1, 10000),
+  };
+}
+
 export const aiSearch = createServerFn({ method: "POST" })
   .inputValidator(
     (data: {
@@ -166,6 +192,8 @@ export const aiSearch = createServerFn({ method: "POST" })
       fallbackOrigin?: { lat: number; lng: number; label: string } | null;
       mode?: "search" | "itinerary";
       weather?: string | null;
+      /** Structured choices from the main card; they override the AI's parsing. */
+      hints?: Partial<SearchHints> | null;
     }) => ({
       prompt: (data.prompt ?? "").trim().slice(0, 600),
       fallbackOrigin:
@@ -180,6 +208,7 @@ export const aiSearch = createServerFn({ method: "POST" })
           : null,
       mode: data.mode === "itinerary" ? ("itinerary" as const) : ("search" as const),
       weather: data.weather ? String(data.weather).slice(0, 120) : null,
+      hints: sanitizeHints(data.hints),
     }),
   )
   .handler(async ({ data }): Promise<AiSearchResult> => {
@@ -235,6 +264,22 @@ export const aiSearch = createServerFn({ method: "POST" })
       return { ...empty, error: AI_BUSY_MESSAGE };
     }
 
+    // The card's explicit choices win over whatever the AI parsed.
+    const hints = data.hints;
+    if (hints) {
+      if (hints.keywords.length > 0) {
+        criteria.keywords = [...hints.keywords, ...cleanKeywords(criteria.keywords)].slice(0, 3);
+      }
+      if (hints.indoorPreference) criteria.indoorPreference = hints.indoorPreference;
+      if (hints.ages.length > 0) criteria.ages = hints.ages;
+      if (hints.maxDriveMinutes) {
+        criteria.maxDriveMinutes = hints.maxDriveMinutes;
+        criteria.maxDistanceKm = null;
+      }
+      if (hints.freeOnly) criteria.freeOnly = true;
+      if (hints.budget) criteria.budget = hints.budget;
+    }
+
     // 2) Resolve origin
     let origin = data.fallbackOrigin;
     if (criteria.city) {
@@ -274,6 +319,11 @@ export const aiSearch = createServerFn({ method: "POST" })
     }
     const found: PlaceResult[] = [];
     const seen = new Set<string>();
+    // Places returned by the parent's own keywords/vibe searches rank higher.
+    const boostIds = new Set<string>();
+    responses.forEach((res, i) => {
+      if (queries[i]) for (const p of res.places) boostIds.add(p.id);
+    });
     for (const res of responses) {
       for (const p of res.places) {
         if (!seen.has(p.id)) {
@@ -283,7 +333,7 @@ export const aiSearch = createServerFn({ method: "POST" })
       }
     }
 
-    const candidates = selectCandidates(found, criteria, origin, radiusKm);
+    const candidates = selectCandidates(found, criteria, origin, radiusKm, 4, boostIds);
 
     if (candidates.length === 0) {
       return {
@@ -410,7 +460,7 @@ export const aiSearch = createServerFn({ method: "POST" })
         summary: "הצגנו את המקומות הקרובים שמצאנו (הדירוג החכם לא היה זמין כרגע).",
         criteria,
         origin,
-        places: candidates.slice(0, 24),
+        places: candidates.slice(0, 40),
         reasons: {},
         checks: {},
         priceEstimates: {},

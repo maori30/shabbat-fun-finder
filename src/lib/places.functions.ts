@@ -52,12 +52,12 @@ const TEXT_QUERIES = [
 // Tighter subset when "activity mode" is on — focus on attractions, not cafes.
 const ACTIVITY_TEXT_QUERIES = [
   "משחקייה לילדים",
+  "פארק טרמפולינות",
+  "מוזיאון ילדים אינטראקטיבי",
+  "פינת חי לילדים",
+  "סדנאות לילדים",
   "פעלטון",
   "פארק שעשועים לילדים",
-  "מוזיאון אינטראקטיבי",
-  "אטרקציות לילדים",
-  "trampoline park",
-  "indoor playground",
 ];
 
 export type PlaceResult = {
@@ -81,6 +81,8 @@ export type PlaceResult = {
   ageRange: { min: number; max: number } | null;
   isSoftDemoted?: boolean;
   price: string | null;
+  /** Google's price level, when known. */
+  priceLevel?: "FREE" | "INEXPENSIVE" | "MODERATE" | "EXPENSIVE" | "VERY_EXPENSIVE" | null;
   description: string | null;
   photoUri: string | null;
   emoji: string;
@@ -139,6 +141,23 @@ function getHoursForDay(
   // present it as a precise operating window.
   if (!start || !end || (start === "00:00" && end === "00:00")) return null;
   return `${start}-${end}`;
+}
+
+function toPriceLevel(level?: string): PlaceResult["priceLevel"] {
+  switch (level) {
+    case "PRICE_LEVEL_FREE":
+      return "FREE";
+    case "PRICE_LEVEL_INEXPENSIVE":
+      return "INEXPENSIVE";
+    case "PRICE_LEVEL_MODERATE":
+      return "MODERATE";
+    case "PRICE_LEVEL_EXPENSIVE":
+      return "EXPENSIVE";
+    case "PRICE_LEVEL_VERY_EXPENSIVE":
+      return "VERY_EXPENSIVE";
+    default:
+      return null;
+  }
 }
 
 function israelDayOfWeek() {
@@ -363,6 +382,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
       "places.formattedAddress",
       "places.location",
       "places.rating",
+      "places.priceLevel",
       "places.userRatingCount",
       "places.googleMapsUri",
       "places.websiteUri",
@@ -387,6 +407,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
       formattedAddress?: string;
       location?: { latitude: number; longitude: number };
       rating?: number;
+      priceLevel?: string;
       userRatingCount?: number;
       googleMapsUri?: string;
       websiteUri?: string;
@@ -438,19 +459,15 @@ export const searchPlaces = createServerFn({ method: "POST" })
         }),
       ];
     } else {
-      const typeGroups = (data.activityMode ? ACTIVITY_TYPE_GROUPS : TYPE_GROUPS).slice(
-        0,
-        data.activityMode ? 5 : 6,
-      );
-      const textQueries = (data.activityMode ? ACTIVITY_TEXT_QUERIES : TEXT_QUERIES).slice(
-        0,
-        data.activityMode ? 4 : 5,
-      );
+      // Places API bills per request, not per result — so ask for the max
+      // (20) every time and cover every activity type group.
+      const typeGroups = data.activityMode ? ACTIVITY_TYPE_GROUPS : TYPE_GROUPS.slice(0, 6);
+      const textQueries = (data.activityMode ? ACTIVITY_TEXT_QUERIES : TEXT_QUERIES).slice(0, 5);
       batches = [
         ...typeGroups.map((includedTypes) =>
           callGoogle("places/v1/places:searchNearby", {
             includedTypes,
-            maxResultCount: 12,
+            maxResultCount: 20,
             languageCode: "he",
             regionCode: "IL",
             locationRestriction: { circle },
@@ -461,7 +478,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
             textQuery,
             languageCode: "he",
             regionCode: "IL",
-            maxResultCount: 8,
+            maxResultCount: 20,
             locationBias: { circle },
           }),
         ),
@@ -512,7 +529,8 @@ export const searchPlaces = createServerFn({ method: "POST" })
         todayHours,
         environment: inferEnvironment(types, name),
         ageRange: inferAgeRange(types, name),
-        price: null,
+        price: p.priceLevel === "PRICE_LEVEL_FREE" ? "חינם" : null,
+        priceLevel: toPriceLevel(p.priceLevel),
         description: p.editorialSummary?.text ?? buildFallbackDescription(types, name),
         photoUri: buildPhotoUri(p.photos?.[0]?.name, GOOGLE_MAPS_API_KEY),
         emoji: pickEmoji(types, name),

@@ -117,3 +117,25 @@ test("AI picks come first, then the remaining candidates", () => {
   );
   assert.equal(mergePicks([], cands, 2).length, 2);
 });
+
+test("budget drops places Google marks as expensive (unknown price passes)", () => {
+  const found = [
+    place({ name: "זול", priceLevel: "INEXPENSIVE" }),
+    place({ name: "לא ידוע" }),
+    place({ name: "יקר", priceLevel: "EXPENSIVE" }),
+    place({ name: "בינוני", priceLevel: "MODERATE" }),
+    place({ name: "עוד אחד" }),
+  ];
+  const c = { ...indoorToddlers, indoorPreference: "לא משנה" as const, ages: [], budget: 150 };
+  const names = selectCandidates(found, c, PETAH_TIKVA, 37).map((p) => p.name);
+  assert.ok(!names.includes("יקר"));
+  assert.equal(names.length, 4);
+});
+
+test("places matching the parent's vibe rank higher", () => {
+  const a = place({ name: "רגיל" });
+  const b = place({ name: "פארק מים", lat: a.lat + 0.02 });
+  const c = { ...indoorToddlers, indoorPreference: "לא משנה" as const, ages: [] };
+  const out = selectCandidates([a, b], c, PETAH_TIKVA, 37, 1, new Set([b.id]));
+  assert.equal(out[0]!.name, "פארק מים");
+});

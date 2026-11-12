@@ -5,13 +5,62 @@
  */
 
 export const VIBES = [
-  { id: "water", label: "מים", emoji: "🏊", terms: "פארק מים, בריכה או חוף" },
-  { id: "indoor", label: "ממוזג", emoji: "❄️", terms: "מקום ממוזג בפנים" },
-  { id: "nature", label: "טבע", emoji: "🌳", terms: "טבע, פארק או מסלול קל" },
-  { id: "create", label: "יצירה", emoji: "🎨", terms: "סדנת יצירה או מוזיאון ילדים אינטראקטיבי" },
-  { id: "animals", label: "חיות", emoji: "🐘", terms: "גן חיות, ספארי או פינת חי" },
-  { id: "action", label: "אקשן", emoji: "🏎️", terms: "אקשן – טרמפולינות, קארטינג, פארק אתגרים" },
-] as const;
+  {
+    id: "water",
+    label: "מים",
+    emoji: "🏊",
+    terms: "פארק מים, בריכה או חוף",
+    keywords: ["פארק מים", "בריכה לילדים"],
+    env: null,
+  },
+  {
+    id: "indoor",
+    label: "ממוזג",
+    emoji: "❄️",
+    terms: "מקום ממוזג בפנים",
+    keywords: ["משחקייה לילדים", "מוזיאון ילדים"],
+    env: "ממוזג",
+  },
+  {
+    id: "nature",
+    label: "טבע",
+    emoji: "🌳",
+    terms: "טבע, פארק או מסלול קל",
+    keywords: ["פארק", "שמורת טבע"],
+    env: "פתוח",
+  },
+  {
+    id: "create",
+    label: "יצירה",
+    emoji: "🎨",
+    terms: "סדנת יצירה או מוזיאון ילדים אינטראקטיבי",
+    keywords: ["סדנת יצירה לילדים", "מוזיאון ילדים"],
+    env: "ממוזג",
+  },
+  {
+    id: "animals",
+    label: "חיות",
+    emoji: "🐘",
+    terms: "גן חיות, ספארי או פינת חי",
+    keywords: ["פינת חי", "גן חיות"],
+    env: null,
+  },
+  {
+    id: "action",
+    label: "אקשן",
+    emoji: "🏎️",
+    terms: "אקשן – טרמפולינות, קארטינג, פארק אתגרים",
+    keywords: ["פארק טרמפולינות", "קארטינג"],
+    env: null,
+  },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  emoji: string;
+  terms: string;
+  keywords: readonly string[];
+  env: "ממוזג" | "פתוח" | null;
+}[];
 
 export const BUDGETS = [
   { id: "any", label: "לא משנה", text: "" },
@@ -56,4 +105,35 @@ export function buildPrompt(c: PlanChoices, mode: "search" | "itinerary" = "sear
   const sentence = parts.join(", ") + ".";
   const extra = c.freeText.trim();
   return (extra ? `${sentence} פרטים נוספים מההורים: ${extra}` : sentence).slice(0, 600);
+}
+
+/**
+ * Structured search hints sent alongside the prompt, so every choice on the
+ * card filters the search directly instead of relying on the AI to parse it.
+ */
+export type SearchHints = {
+  keywords: string[];
+  indoorPreference: "ממוזג" | "פתוח" | null;
+  ages: number[];
+  maxDriveMinutes: number;
+  freeOnly: boolean;
+  budget: number | null;
+};
+
+/** "4 ו־7", "2,4", "בני 3 ו 5" → [4, 7] … (0–18 only). */
+export function parseAges(text: string): number[] {
+  const nums = (text.match(/\d{1,2}/g) ?? []).map(Number).filter((n) => n >= 0 && n <= 18);
+  return Array.from(new Set(nums)).slice(0, 6);
+}
+
+export function buildHints(c: Omit<PlanChoices, "originLabel" | "freeText">): SearchHints {
+  const vibe = VIBES.find((v) => v.id === c.vibe);
+  return {
+    keywords: vibe ? [...vibe.keywords] : [],
+    indoorPreference: vibe?.env ?? null,
+    ages: parseAges(c.ages),
+    maxDriveMinutes: c.drive,
+    freeOnly: c.budget === "free",
+    budget: c.budget === "150" ? 150 : c.budget === "300" ? 300 : null,
+  };
 }
