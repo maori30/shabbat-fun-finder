@@ -10,11 +10,11 @@ import { ATTRACTIONS, type Attraction } from "@/data/attractions";
 import { SuggestAttraction } from "@/components/suggest-attraction";
 import { ThemeToggle } from "@/components/glass/theme-toggle";
 import { PlaceCard } from "@/components/place-card";
-import { ShabbatMode } from "@/components/shabbat-mode";
-import { AiPanel } from "@/components/finder/ai-panel";
 import { FiltersPanel } from "@/components/finder/filters-panel";
 import { ItineraryPanel } from "@/components/finder/itinerary-panel";
-import { LocationPanel } from "@/components/finder/location-panel";
+import { ManualSearchPanel } from "@/components/finder/manual-search-panel";
+import { PlanPanel } from "@/components/finder/plan-panel";
+import { buildPrompt, DEFAULT_PLAN } from "@/lib/prompt";
 import { Spinner } from "@/components/finder/spinner";
 import {
   attractionToPlaceResult,
@@ -81,7 +81,14 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
   const [reportCounts, setReportCounts] = useState<Record<string, ReportCounts>>({});
 
   // --- AI ---
-  const [aiPrompt, setAiPrompt] = useState("");
+  const [vibe, setVibe] = useState(DEFAULT_PLAN.vibe);
+  const [ages, setAges] = useState(DEFAULT_PLAN.ages);
+  const [drive, setDrive] = useState(DEFAULT_PLAN.drive);
+  const [budget, setBudget] = useState(DEFAULT_PLAN.budget);
+  const [freeText, setFreeText] = useState(DEFAULT_PLAN.freeText);
+  const [locationMissing, setLocationMissing] = useState(false);
+  /** Bumped when a search starts so the page scrolls to the results area. */
+  const [searchStartedAt, setSearchStartedAt] = useState(0);
   const [aiLoading, setAiLoading] = useState(false);
   const [itineraryLoading, setItineraryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState("");
@@ -147,15 +154,25 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
     setLunchTip("");
   };
 
+  /** Ask the user for an origin unless the free text may contain one. */
+  const needOrigin = () => {
+    if (origin || freeText.trim()) return false;
+    setLocationMissing(true);
+    setAiError("בחרו קודם מאיפה יוצאים 👆");
+    document.getElementById("plan")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return true;
+  };
+
   const runAiSearch = async (promptOverride?: string) => {
-    const prompt = (promptOverride ?? aiPrompt).trim();
-    if (!prompt) {
-      setAiError("כתבו במשפט מה אתם מחפשים");
-      return;
-    }
-    setAiLoading(true);
     resetAi();
+    if (!promptOverride && needOrigin()) return;
+    const prompt =
+      promptOverride ??
+      buildPrompt({ vibe, ages, drive, budget, freeText, originLabel: origin?.label ?? null });
+    setAiLoading(true);
     setSavedOnly(false);
+    setSearchError("");
+    setSearchStartedAt(Date.now());
     try {
       const res = await aiSearchFn({ data: { prompt, fallbackOrigin: origin } });
       if (res.error) setAiError(res.error);
@@ -177,18 +194,18 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
   };
 
   const runItinerarySearch = async () => {
-    if (!origin && !aiPrompt.trim()) {
-      setAiError("בחרו מיקום (או כתבו מאיפה יוצאים) כדי שנבנה מסלול הגיוני");
-      return;
-    }
+    resetAi();
+    if (needOrigin()) return;
     setAiLoading(true);
     setItineraryLoading(true);
-    resetAi();
     setSavedOnly(false);
+    setSearchError("");
+    setSearchStartedAt(Date.now());
     try {
-      const prompt = `תבנה מסלול שלם לשבת עם הילדים (בוקר, צהריים, אחר הצהריים).${
-        aiPrompt.trim() ? ` פרטים מההורים: ${aiPrompt.trim()}` : ""
-      }`;
+      const prompt = buildPrompt(
+        { vibe, ages, drive, budget, freeText, originLabel: origin?.label ?? null },
+        "itinerary",
+      );
       const res = await aiSearchFn({
         data: {
           prompt,
@@ -225,6 +242,7 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
     setSearchError("");
     setSavedOnly(false);
     resetAi();
+    setSearchStartedAt(Date.now());
     try {
       const effectiveRadius = Math.min(radius, MAX_RADIUS_KM);
       const res = await searchPlacesFn({
@@ -297,6 +315,7 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
     setSearchError("");
     setSavedOnly(false);
     resetAi();
+    setSearchStartedAt(Date.now());
     try {
       const located = geoBlocked ? null : await getPosition();
       const here = located ?? origin;
@@ -459,11 +478,18 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
     // the page's structured data and lets people share a search).
     const q = new URLSearchParams(window.location.search).get("q")?.trim();
     if (q) {
-      setAiPrompt(q.slice(0, 600));
+      setFreeText(q.slice(0, 400));
       void runAiSearch(q.slice(0, 600));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (origin) {
+      setLocationMissing(false);
+      setAiError((e) => (e.startsWith("בחרו קודם מאיפה") ? "" : e));
+    }
+  }, [origin]);
 
   useEffect(() => {
     const lat = origin?.lat ?? 32.0853;
@@ -507,6 +533,28 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
   const ranked = !savedOnly && Object.keys(aiReasons).length > 0 && !itinerary;
   const anyLoading = searchLoading || openNowLoading || aiLoading;
 
+  // Scroll to the results area when a search starts, so people see progress
+  // and then the results without hunting for them.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!searchStartedAt) return;
+    resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [searchStartedAt]);
+
+  // Floating "to results" pill while results exist below the viewport.
+  const [resultsBelow, setResultsBelow] = useState(false);
+  useEffect(() => {
+    const el = resultsRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setResultsBelow(!entry!.isIntersecting && entry!.boundingClientRect.top > 0),
+      { rootMargin: "0px 0px -15% 0px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  const showJump = resultsBelow && !anyLoading && !savedOnly && (results?.length ?? 0) > 0;
+
   const card = (p: PlaceResult, index: number) => (
     <PlaceCard
       key={p.id}
@@ -534,17 +582,17 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
       <div className="liquid-orb orb-c" aria-hidden="true" />
       <div className="liquid-orb orb-d" aria-hidden="true" />
       <header className="glass-header text-primary-foreground rounded-b-[28px]">
-        <div className="relative mx-auto max-w-5xl px-4 py-10">
+        <div className="relative mx-auto max-w-5xl px-4 pb-6 pt-8 sm:py-10">
           <div className="absolute left-4 top-4">
             <ThemeToggle />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight md:text-5xl">
+          <h1 className="pl-12 text-2xl font-extrabold tracking-tight sm:text-3xl md:text-5xl">
             {initialCity
               ? `מה עושים עם הילדים בשבת ב${initialCity}? 🎈`
               : "כיף לילדים – אטרקציות ובילויים בשבת 🎈"}
           </h1>
           <p className="mt-2 text-base opacity-90 md:text-lg">
-            מוצאים אטרקציות לילדים – כולל אלה שפתוחות בשבת, ממוזגות או בחוץ, ולפי גיל וקרבה אליכם
+            מקומות לילדים שפתוחים בשבת – לפי גיל, מזג אוויר ומרחק מכם
           </p>
           {weatherInfo && (
             <div
@@ -563,116 +611,135 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-4 px-4 py-6">
-        {/* Step 1 — the fastest path: pick a vibe and go. */}
-        <ShabbatMode
-          originLabel={origin?.label ?? null}
-          loading={aiLoading}
-          onSearch={(prompt) => {
-            setAiPrompt(prompt);
-            void runAiSearch(prompt);
-          }}
-        />
-
-        {/* Step 2 — describe it in your own words. */}
-        <AiPanel
-          aiPrompt={aiPrompt}
-          onPromptChange={setAiPrompt}
-          aiLoading={aiLoading}
-          itineraryLoading={itineraryLoading}
-          aiSummary={aiSummary}
-          aiError={aiError}
-          onSearch={() => void runAiSearch()}
-          onItinerary={() => void runItinerarySearch()}
-          onClear={() => {
-            setAiPrompt("");
-            resetAi();
-          }}
-        />
-
-        {/* Step 3 — browse everything around a location. */}
-        <LocationPanel
-          runOpenNowNearby={() => void runOpenNowNearby()}
-          openNowLoading={openNowLoading}
-          geoBlocked={geoBlocked}
+        {/* The one main card: where from + what you feel like → go. */}
+        <PlanPanel
           origin={origin}
-          locateMe={() => void locateMe()}
           nearCity={nearCity}
-          pickCity={pickCity}
           cityNames={cityNames}
-          lookupCity={() => void lookupCity()}
+          pickCity={pickCity}
+          locateMe={() => void locateMe()}
+          geoBlocked={geoBlocked}
+          geoStatus={geoStatus}
           cityInput={cityInput}
           setCityInput={setCityInput}
+          lookupCity={() => void lookupCity()}
           cityLookupLoading={cityLookupLoading}
-          radius={radius}
-          setRadius={setRadius}
-          clearNearby={clearNearby}
-          geoStatus={geoStatus}
           recentCitySearches={recentCitySearches}
           selectRecentCity={selectRecentCity}
           removeRecentCity={removeRecentCity}
-          query={query}
-          setQuery={setQuery}
-          searchLoading={searchLoading}
-          runGoogleSearch={() => void runGoogleSearch()}
-          activityMode={activityMode}
-          setActivityMode={setActivityMode}
-          searchError={searchError}
+          vibe={vibe}
+          setVibe={setVibe}
+          ages={ages}
+          setAges={setAges}
+          drive={drive}
+          setDrive={setDrive}
+          budget={budget}
+          setBudget={setBudget}
+          freeText={freeText}
+          setFreeText={setFreeText}
+          onFind={() => void runAiSearch()}
+          onBuild={() => void runItinerarySearch()}
+          onOpenNow={() => void runOpenNowNearby()}
+          aiLoading={aiLoading}
+          itineraryLoading={itineraryLoading}
+          openNowLoading={openNowLoading}
+          error={aiError}
+          locationMissing={locationMissing}
         />
 
-        {/* Filters — apply live to whatever list is on screen. */}
-        <FiltersPanel
-          shabbatOnly={shabbatOnly}
-          setShabbatOnly={setShabbatOnly}
-          age={age}
-          setAge={setAge}
-          env={env}
-          setEnv={setEnv}
-          activeFilterCount={activeFilterCount}
-        />
+        {/* Results anchor — the page scrolls here when a search starts. */}
+        <div ref={resultsRef} id="results" className="scroll-mt-4" />
 
-        {anyLoading && !results ? (
+        {anyLoading && (
           <div
-            className="mt-10 flex flex-col items-center justify-center gap-4 text-muted-foreground"
+            className="glass-panel flex items-center justify-center gap-3 rounded-2xl p-6 text-muted-foreground"
             role="status"
           >
-            <Spinner className="h-10 w-10 text-primary" />
-            <span className="text-sm font-medium">מחפשים בשבילכם...</span>
+            <Spinner className="h-7 w-7 text-primary" />
+            <span className="text-sm font-medium">
+              {itineraryLoading
+                ? "בונים לכם מסלול לשבת... זה לוקח כמה שניות"
+                : "מחפשים בשבילכם... זה לוקח כמה שניות"}
+            </span>
           </div>
-        ) : results || savedPlaces.length > 0 ? (
-          <section aria-label="תוצאות" aria-busy={anyLoading}>
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <span>
-                {savedOnly
-                  ? `❤️ הרשימה שלי: ${visible.length} מקומות`
-                  : results
-                    ? `🌍 ${visible.length} תוצאות${ranked || itinerary ? "" : " · מהקרוב לרחוק"}`
-                    : ""}
-              </span>
-              <label className="glass-chip inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5">
-                <input
-                  type="checkbox"
-                  checked={savedOnly}
-                  onChange={(e) => setSavedOnly(e.target.checked)}
-                  className="accent-primary"
-                />
-                <span>❤️ הצג רק את הרשימה שלי ({savedPlaces.length})</span>
-              </label>
-              {hiddenCount > 0 && (
-                <span className="glass-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5">
-                  הוסתרו {hiddenCount} שלא מתאימים לסינון
-                  <button
-                    className="font-semibold underline"
-                    onClick={() => {
-                      setShabbatOnly(false);
-                      setAge("");
-                      setEnv("all");
-                    }}
-                  >
-                    הצג הכל
-                  </button>
-                </span>
+        )}
+
+        {!anyLoading && (results || savedOnly) ? (
+          <section aria-label="תוצאות" className="space-y-3">
+            {/* Results header: what we found + what to do next */}
+            <div className="glass-panel rounded-2xl p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h2 className="text-lg font-extrabold">
+                  {savedOnly
+                    ? `❤️ הרשימה שלי (${visible.length})`
+                    : itinerary
+                      ? "🗓️ המסלול שלכם לשבת מוכן!"
+                      : visible.length > 0
+                        ? `✅ מצאנו ${visible.length} מקומות${origin ? ` ליד ${origin.label}` : ""}`
+                        : "לא מצאנו מקומות מתאימים"}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() =>
+                    document.getElementById("plan")?.scrollIntoView({ behavior: "smooth" })
+                  }
+                  className="glass-btn rounded-full px-3 py-1.5 text-xs font-semibold"
+                >
+                  🔄 חיפוש חדש
+                </button>
+              </div>
+              {!savedOnly && aiSummary && <p className="mt-2 text-sm">🤖 {aiSummary}</p>}
+              {!savedOnly && (aiError || searchError) && (
+                <p role="status" className="mt-2 text-sm text-rose-700 dark:text-rose-300">
+                  {aiError || searchError}
+                </p>
               )}
+              {!savedOnly && visible.length > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {itinerary
+                    ? "👇 למטה: התחנות במסלול, ואחריהן עוד חלופות – בכל כרטיס יש שעות, ניווט בוויז ושיתוף בוואטסאפ."
+                    : ranked
+                      ? "👇 הכרטיס הראשון הוא ההמלצה שלנו. גללו למטה לעוד אפשרויות – בכל כרטיס יש שעות, ניווט ושיתוף."
+                      : "👇 מסודר מהקרוב לרחוק. לחצו 🤍 כדי לשמור מקום לרשימה שלכם."}
+                </p>
+              )}
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <label className="glass-chip inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5">
+                  <input
+                    type="checkbox"
+                    checked={savedOnly}
+                    onChange={(e) => setSavedOnly(e.target.checked)}
+                    className="accent-primary"
+                  />
+                  <span>❤️ רק הרשימה שלי ({savedPlaces.length})</span>
+                </label>
+                {hiddenCount > 0 && (
+                  <span className="glass-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5">
+                    הוסתרו {hiddenCount} לפי הסינון
+                    <button
+                      className="font-semibold underline"
+                      onClick={() => {
+                        setShabbatOnly(false);
+                        setAge("");
+                        setEnv("all");
+                      }}
+                    >
+                      הצג הכל
+                    </button>
+                  </span>
+                )}
+              </div>
             </div>
+
+            <FiltersPanel
+              shabbatOnly={shabbatOnly}
+              setShabbatOnly={setShabbatOnly}
+              age={age}
+              setAge={setAge}
+              env={env}
+              setEnv={setEnv}
+              activeFilterCount={activeFilterCount}
+            />
 
             {!savedOnly && itinerary && (
               <ItineraryPanel
@@ -683,37 +750,56 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
               />
             )}
 
-            <div className="mt-3 space-y-4">
+            <div className="space-y-4">
               {ranked && visible.length > 0 && (
                 <div className="mx-auto max-w-2xl">{card(visible[0]!, 0)}</div>
               )}
               {ranked && visible.length > 1 && (
                 <h2 className="pt-2 text-base font-bold">עוד אפשרויות מתאימות</h2>
               )}
+              {itinerary && visible.length > 0 && (
+                <h2 className="pt-2 text-base font-bold">המקומות במסלול ועוד חלופות</h2>
+              )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {(ranked ? visible.slice(1) : visible).map((p, i) => card(p, ranked ? i + 1 : i))}
               </div>
             </div>
 
-            {visible.length === 0 && !anyLoading && (
-              <div className="glass-empty mt-8 rounded-2xl p-8 text-center text-muted-foreground">
+            {visible.length === 0 && (
+              <div className="glass-empty rounded-2xl p-8 text-center text-muted-foreground">
                 {savedOnly
                   ? savedPlaces.length === 0
                     ? "עוד לא שמרתם מקומות. לחצו על 🤍 בכרטיס כדי להוסיף לרשימה."
                     : "אף מקום ברשימה שלכם לא מתאים לסינון הנוכחי."
                   : baseList.length > 0
                     ? 'כל התוצאות הוסתרו בגלל הסינון – לחצו "הצג הכל" למעלה.'
-                    : "לא נמצאו תוצאות. נסו לשנות את החיפוש או להגדיל את הרדיוס."}
+                    : "נסו כיוון אחר, זמן נסיעה ארוך יותר, או את החיפוש הידני למטה."}
               </div>
             )}
           </section>
-        ) : (
-          <div className="glass-empty mt-4 rounded-2xl p-10 text-center text-muted-foreground">
-            {origin
-              ? `בחרו "מצב שבת", כתבו מה אתם מחפשים, או לחצו "חפש אטרקציות" סביב ${origin.label}.`
-              : 'בחרו "מצב שבת", כתבו מה אתם מחפשים, או בחרו מיקום ולחצו "חפש אטרקציות".'}
-          </div>
+        ) : null}
+
+        {!anyLoading && !results && !savedOnly && savedPlaces.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setSavedOnly(true)}
+            className="glass-btn w-full rounded-2xl px-4 py-3 text-sm font-semibold"
+          >
+            ❤️ הרשימה השמורה שלי ({savedPlaces.length})
+          </button>
         )}
+
+        <ManualSearchPanel
+          origin={origin}
+          query={query}
+          setQuery={setQuery}
+          radius={radius}
+          setRadius={setRadius}
+          activityMode={activityMode}
+          setActivityMode={setActivityMode}
+          searchLoading={searchLoading}
+          runGoogleSearch={() => void runGoogleSearch()}
+        />
 
         <div className="pt-4">
           <SuggestAttraction />
@@ -739,6 +825,16 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
           המידע הוא לצורך התרשמות בלבד. מומלץ לוודא שעות פתיחה מול האתר הרשמי.
         </footer>
       </main>
+
+      {showJump && (
+        <button
+          type="button"
+          onClick={() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          className="glass-btn-primary fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-full px-5 py-3 text-sm font-bold shadow-xl"
+        >
+          ⬇️ לתוצאות ({visible.length})
+        </button>
+      )}
     </div>
   );
 }

@@ -338,7 +338,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
     const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
     if (!LOVABLE_API_KEY || !GOOGLE_MAPS_API_KEY) {
-      return { places: [], error: "Google Maps not configured" };
+      return { places: [], error: "החיפוש בגוגל לא זמין כרגע – מוצגים רק המקומות מהמאגר שלנו" };
     }
 
     const cacheKey = JSON.stringify({
