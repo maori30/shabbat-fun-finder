@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { itineraryShareText, whatsappUrl } from "../src/lib/share.ts";
+import { itineraryShareText, wazeUrl, whatsappUrl } from "../src/lib/share.ts";
 import type { PlaceResult } from "../src/lib/places.functions.ts";
 
 const p = (id: string, name: string): PlaceResult =>
@@ -29,4 +29,15 @@ test("plan text lists every stop in order with Waze links and lunch", () => {
   assert.match(text, /🥪 פיקניק בפארק/);
   assert.ok(text.indexOf("ספארי") < text.indexOf("משחקייה"));
   assert.match(whatsappUrl(text), /^https:\/\/wa\.me\/\?text=/);
+});
+
+test("curated places navigate by name; others by coordinates", () => {
+  assert.equal(
+    wazeUrl({ id: "local-101", name: "גן השלושה", address: "ניר דוד", lat: 32.5, lng: 35.4 }),
+    `https://waze.com/ul?q=${encodeURIComponent("גן השלושה ניר דוד")}&navigate=yes`,
+  );
+  assert.equal(
+    wazeUrl({ id: "ChIJ123", name: "x", address: "y", lat: 32.5, lng: 35.4 }),
+    "https://waze.com/ul?ll=32.5,35.4&navigate=yes",
+  );
 });

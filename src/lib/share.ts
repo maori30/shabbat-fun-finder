@@ -19,12 +19,24 @@ export function itineraryShareText(
     if (!p) continue;
     lines.push(`${SLOT_EMOJI[stop.slot] ?? "📍"} ${stop.slot}: ${p.emoji} ${p.name}`);
     if (stop.tip) lines.push(`   ${stop.tip}`);
-    lines.push(`   🧭 https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`);
+    lines.push(`   🧭 ${wazeUrl(p)}`);
     lines.push("");
   }
   if (lunchTip) lines.push(`🥪 ${lunchTip}`, "");
   lines.push(`נמצא ב"כיף לילדים" – ${siteUrl}`);
   return lines.join("\n");
+}
+
+/**
+ * Waze link for a place. Our hand-curated list stores approximate
+ * coordinates, so those navigate by name (Waze resolves the exact spot);
+ * Google results and geocoded suggestions use their precise coordinates.
+ */
+export function wazeUrl(p: Pick<PlaceResult, "id" | "name" | "address" | "lat" | "lng">): string {
+  if (p.id.startsWith("local-")) {
+    return `https://waze.com/ul?q=${encodeURIComponent(`${p.name} ${p.address}`.trim())}&navigate=yes`;
+  }
+  return `https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`;
 }
 
 export function whatsappUrl(text: string): string {

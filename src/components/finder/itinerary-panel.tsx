@@ -2,7 +2,7 @@ import type { PlaceResult } from "@/lib/places.functions";
 import type { ItineraryStop } from "@/lib/ai-search.functions";
 import { distanceKm } from "@/lib/geo";
 import type { Origin } from "@/lib/finder-utils";
-import { itineraryShareText, whatsappUrl } from "@/lib/share";
+import { itineraryShareText, wazeUrl, whatsappUrl } from "@/lib/share";
 import { SITE_URL } from "@/lib/site";
 
 /** The morning → noon → afternoon plan from "תבנה לי את השבת". */
@@ -42,7 +42,7 @@ export function ItineraryPanel({
                     </span>
                   )}
                   <a
-                    href={`https://waze.com/ul?ll=${place.lat},${place.lng}&navigate=yes`}
+                    href={wazeUrl(place)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="glass-link glass-link-waze"
