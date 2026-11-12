@@ -745,6 +745,19 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
                       : "👇 מסודר מהקרוב לרחוק. לחצו 🤍 כדי לשמור מקום לרשימה שלכם."}
                 </p>
               )}
+              {!savedOnly && !itinerary && visible.length < 5 && (
+                <div className="mt-3 rounded-2xl border border-dashed border-primary/40 p-3 text-sm">
+                  <p className="mb-2">
+                    🤔 מצאנו מעט מקומות{origin ? ` ליד ${origin.label}` : ""}. מכירים מקום שפתוח
+                    בשבת באזור? ספרו לנו ונוסיף אותו להורים אחרים.
+                  </p>
+                  <SuggestAttraction
+                    label="➕ הוסיפו מקום שאתם מכירים"
+                    defaultCity={origin?.label}
+                    prominent
+                  />
+                </div>
+              )}
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
                 <label className="glass-chip inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5">
                   <input

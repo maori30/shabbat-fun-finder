@@ -2,6 +2,8 @@ import type { PlaceResult } from "@/lib/places.functions";
 import type { ItineraryStop } from "@/lib/ai-search.functions";
 import { distanceKm } from "@/lib/geo";
 import type { Origin } from "@/lib/finder-utils";
+import { itineraryShareText, whatsappUrl } from "@/lib/share";
+import { SITE_URL } from "@/lib/site";
 
 /** The morning → noon → afternoon plan from "תבנה לי את השבת". */
 export function ItineraryPanel({
@@ -54,6 +56,15 @@ export function ItineraryPanel({
         })}
       </ol>
       {lunchTip && <p className="glass-panel mt-3 rounded-2xl p-3 text-sm">🥪 {lunchTip}</p>}
+      <a
+        href={whatsappUrl(itineraryShareText(itinerary, placeById, lunchTip, SITE_URL))}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-white"
+        style={{ backgroundColor: "#25D366" }}
+      >
+        💬 שלחו את כל התוכנית בוואטסאפ
+      </a>
     </div>
   );
 }

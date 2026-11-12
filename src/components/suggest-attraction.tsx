@@ -19,7 +19,16 @@ const ageOrNull = (v: FormDataEntryValue | null) => {
   return s === "" ? null : Number(s);
 };
 
-export function SuggestAttraction() {
+export function SuggestAttraction({
+  label = "+ מכירים מקום פתוח בשבת? הוסיפו אותו",
+  defaultCity,
+  prominent = false,
+}: {
+  label?: string;
+  /** Pre-fills the city (e.g. the area that just returned few results). */
+  defaultCity?: string;
+  prominent?: boolean;
+} = {}) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const suggestFn = useServerFn(suggestAttraction);
@@ -65,8 +74,8 @@ export function SuggestAttraction() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">
-          + מכירים מקום פתוח בשבת? הוסיפו אותו
+        <Button variant={prominent ? "default" : "outline"} className="w-full">
+          {label}
         </Button>
       </DialogTrigger>
       <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto">
@@ -99,6 +108,7 @@ export function SuggestAttraction() {
             <Input
               id="city"
               name="city"
+              defaultValue={defaultCity && defaultCity !== "המיקום שלי" ? defaultCity : undefined}
               required
               minLength={2}
               maxLength={80}
