@@ -15,6 +15,13 @@
       "when": 1794512675866,
       "tag": "0001_restrict_place_reports_read",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794512712436,
+      "tag": "0002_create_search_insights",
+      "breakpoints": true
     }
   ]
 }

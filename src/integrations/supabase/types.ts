@@ -107,6 +107,45 @@ export type Database = {
         }
         Relationships: []
       }
+      search_insights: {
+        Row: {
+          area: string | null
+          created_at: string
+          free_only: boolean | null
+          id: number
+          indoor: string | null
+          kind: string
+          lat: number | null
+          lng: number | null
+          result_count: number
+          vibe: string | null
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string
+          free_only?: boolean | null
+          id?: number
+          indoor?: string | null
+          kind: string
+          lat?: number | null
+          lng?: number | null
+          result_count: number
+          vibe?: string | null
+        }
+        Update: {
+          area?: string | null
+          created_at?: string
+          free_only?: boolean | null
+          id?: number
+          indoor?: string | null
+          kind?: string
+          lat?: number | null
+          lng?: number | null
+          result_count?: number
+          vibe?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
