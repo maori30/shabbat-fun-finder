@@ -8,6 +8,13 @@
       "when": 1794477128933,
       "tag": "0000_throttle_place_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794512675866,
+      "tag": "0001_restrict_place_reports_read",
+      "breakpoints": true
     }
   ]
 }
