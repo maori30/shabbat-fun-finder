@@ -4,6 +4,7 @@ import { distanceKm } from "@/lib/geo";
 import { callAi, envKey } from "@/lib/ai-client";
 import { cleanKeywords, mergePicks, planQueries, selectCandidates } from "@/lib/ai-candidates";
 import type { SearchHints } from "@/lib/prompt";
+import { recordInsight } from "@/lib/insights.functions";
 import { allowRequest, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit";
 
 export type AiCriteria = {
@@ -54,6 +55,7 @@ function sanitizeHints(h: Partial<SearchHints> | null | undefined): SearchHints 
   const num = (v: unknown, lo: number, hi: number) =>
     typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : null;
   return {
+    vibe: typeof h.vibe === "string" ? h.vibe.slice(0, 20) : null,
     keywords: Array.isArray(h.keywords)
       ? h.keywords
           .filter((k): k is string => typeof k === "string")
@@ -223,6 +225,18 @@ export const aiSearch = createServerFn({ method: "POST" })
     }
 
     const candidates = selectCandidates(found, criteria, origin, radiusKm, 4, boostIds);
+
+    // Anonymous insight: how many matching places this kind of request found.
+    await recordInsight({
+      kind: data.mode === "itinerary" ? "itinerary" : "ai",
+      areaLabel: origin.label,
+      lat: origin.lat,
+      lng: origin.lng,
+      vibe: hints?.vibe ?? null,
+      indoor: criteria.indoorPreference === "לא משנה" ? null : criteria.indoorPreference,
+      freeOnly: criteria.freeOnly,
+      resultCount: candidates.length,
+    });
 
     if (candidates.length === 0) {
       return {
