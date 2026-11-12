@@ -821,7 +821,14 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
             </div>
           )}
           {geoStatus && (
-            <div role="status" className="mt-2 text-sm text-rose-700 dark:text-rose-300">
+            <div
+              role="status"
+              className={`mt-2 text-sm ${
+                /^(מאתר|מחפשים סביב)/.test(geoStatus)
+                  ? "text-muted-foreground"
+                  : "text-rose-700 dark:text-rose-300"
+              }`}
+            >
               {geoStatus}
             </div>
           )}

@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /admin
 
 Sitemap: https://shabbat-fun-finder.lovable.app/sitemap.xml
