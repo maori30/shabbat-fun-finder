@@ -130,3 +130,9 @@ export function normalizeExtracted(raw: Record<string, unknown>): ExtractedAttra
     price: str(raw.price, 120),
   };
 }
+
+/** Pull http(s) links out of pasted text (one per line, or mixed with text). */
+export function extractUrls(text: string): string[] {
+  const found = text.match(/https?:\/\/[^\s<>"']+/g) ?? [];
+  return Array.from(new Set(found.map((u) => u.replace(/[),.;]+$/, "")))).slice(0, 25);
+}

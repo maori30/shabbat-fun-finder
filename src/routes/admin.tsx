@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { listSuggestions, reviewSuggestion, type PendingSuggestion } from "@/lib/admin.functions";
 import { parseCoords } from "@/lib/coords";
 import { ImportFromUrl } from "@/components/admin/import-from-url";
+import { InsightsPanel } from "@/components/admin/insights-panel";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -130,6 +131,8 @@ function AdminPage() {
             {loading ? "טוען..." : "טען"}
           </button>
         </form>
+
+        <InsightsPanel password={password} />
 
         <ImportFromUrl password={password} />
 

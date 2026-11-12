@@ -112,6 +112,8 @@ export function buildPrompt(c: PlanChoices, mode: "search" | "itinerary" = "sear
  * card filters the search directly instead of relying on the AI to parse it.
  */
 export type SearchHints = {
+  /** Vibe chip id (for anonymous insights). */
+  vibe: string | null;
   keywords: string[];
   indoorPreference: "ממוזג" | "פתוח" | null;
   ages: number[];
@@ -129,6 +131,7 @@ export function parseAges(text: string): number[] {
 export function buildHints(c: Omit<PlanChoices, "originLabel" | "freeText">): SearchHints {
   const vibe = VIBES.find((v) => v.id === c.vibe);
   return {
+    vibe: vibe?.id ?? null,
     keywords: vibe ? [...vibe.keywords] : [],
     indoorPreference: vibe?.env ?? null,
     ages: parseAges(c.ages),

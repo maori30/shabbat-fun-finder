@@ -331,3 +331,51 @@ export const saveImported = createServerFn({ method: "POST" })
       return { ok: false, error: "השמירה נכשלה" };
     }
   });
+
+// ---------------------------------------------------------------------------
+// Search insights — where are places missing?
+// ---------------------------------------------------------------------------
+
+export const getInsights = createServerFn({ method: "POST" })
+  .inputValidator((d: { password: string; days: number }) => ({
+    password: String(d.password ?? "").slice(0, 200),
+    days: [7, 30, 90].includes(Number(d.days)) ? Number(d.days) : 30,
+  }))
+  .handler(
+    async ({
+      data,
+    }): Promise<AdminResult<{ total: number; areas: import("@/lib/insights").AreaSummary[] }>> => {
+      const denied = await checkPassword(data.password);
+      if (denied) return { ok: false, error: denied };
+      try {
+        const { summarizeInsights } = await import("@/lib/insights");
+        const db = await adminClient();
+        const since = new Date(Date.now() - data.days * 24 * 3600 * 1000).toISOString();
+        const { data: rows, error } = await db
+          .from("search_insights" as never)
+          .select("created_at, kind, area, lat, lng, vibe, indoor, free_only, result_count")
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .limit(5000);
+        if (error) {
+          if (/does not exist|schema cache/i.test(error.message)) {
+            return {
+              ok: false,
+              error: "טבלת הנתונים עוד לא נוצרה – צריך להריץ את ה-SQL של search_insights",
+            };
+          }
+          throw error;
+        }
+        const list = (rows ?? []) as unknown as import("@/lib/insights").InsightRow[];
+        const parsed = list.map((r) => ({
+          ...r,
+          lat: r.lat === null ? null : Number(r.lat),
+          lng: r.lng === null ? null : Number(r.lng),
+        }));
+        return { ok: true, data: { total: parsed.length, areas: summarizeInsights(parsed) } };
+      } catch (e) {
+        console.error("getInsights failed", e);
+        return { ok: false, error: "טעינת הנתונים נכשלה" };
+      }
+    },
+  );

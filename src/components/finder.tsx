@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { searchPlaces, geocodeCity, type PlaceResult } from "@/lib/places.functions";
 import { aiSearch, type ItineraryStop } from "@/lib/ai-search.functions";
 import { getWeekendWeather } from "@/lib/weather.functions";
+import { weekendNotice, type WeekendNotice } from "@/lib/holidays";
+import { logSearch } from "@/lib/insights.functions";
 import { CITY_COORDS, citySlug, distanceKm, resolveCityName } from "@/lib/geo";
 import { applyFilters, type EnvFilter } from "@/lib/filters";
 import { ATTRACTIONS, type Attraction } from "@/data/attractions";
@@ -106,6 +108,11 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
     isRainy: boolean;
   } | null>(null);
 
+  // Holiday notice for the coming weekend (computed in the browser so the
+  // server-rendered HTML and the client agree).
+  const [notice, setNotice] = useState<WeekendNotice | null>(null);
+  useEffect(() => setNotice(weekendNotice()), []);
+
   // --- saved list (one list for every source) ---
   const [savedPlaces, setSavedPlaces] = useState<PlaceResult[]>([]);
   const [savedOnly, setSavedOnly] = useState(false);
@@ -113,6 +120,13 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
   const searchPlacesFn = useServerFn(searchPlaces);
   const aiSearchFn = useServerFn(aiSearch);
   const geocodeCityFn = useServerFn(geocodeCity);
+  const logSearchFn = useServerFn(logSearch);
+  /** Fire-and-forget anonymous insight (never blocks or breaks a search). */
+  const logInsight = (kind: "manual" | "open_now", where: Origin, count: number) => {
+    void logSearchFn({
+      data: { kind, areaLabel: where.label, lat: where.lat, lng: where.lng, resultCount: count },
+    }).catch(() => {});
+  };
 
   const isSavedPlace = (id: string) => savedPlaces.some((item) => item.id === id);
   const toggleSavedPlace = (place: PlaceResult) => {
@@ -285,6 +299,7 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
       );
       setResults(merged);
       setResultsUpdatedAt(Date.now());
+      logInsight("manual", origin, merged.length);
     } catch (e) {
       console.error(e);
       setSearchError("החיפוש נכשל – בדקו את החיבור ונסו שוב");
@@ -376,12 +391,14 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
           setEnv(hit.list === indoorShabbat ? "ממוזג" : "all");
           setAge("");
           setResults(byDistance(hit.list));
+          logInsight("open_now", here, hit.list.length);
           setResultsUpdatedAt(Date.now());
           setSearchError(hit.note ? `${hit.note} · רדיוס ${quickRadius} ק"מ` : "");
           return;
         }
       }
       setResults([]);
+      logInsight("open_now", here, 0);
       setSearchError("לא מצאנו מקומות שפתוחים עכשיו בסביבה – נסו להגדיל את הרדיוס");
     } catch (e) {
       console.error(e);
@@ -619,6 +636,23 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-4 px-4 py-6">
+        {notice && (
+          <div
+            role="note"
+            className={`glass-panel flex gap-3 rounded-2xl p-4 text-sm ${
+              notice.tone === "warning" ? "ring-2 ring-amber-400/70" : ""
+            }`}
+          >
+            <span className="text-2xl" aria-hidden="true">
+              {notice.emoji}
+            </span>
+            <div>
+              <div className="font-bold">{notice.title}</div>
+              <div className="text-muted-foreground">{notice.text}</div>
+            </div>
+          </div>
+        )}
+
         {/* The one main card: where from + what you feel like → go. */}
         <PlanPanel
           origin={origin}
@@ -710,6 +744,19 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
                       ? "👇 הכרטיס הראשון הוא ההמלצה שלנו. גללו למטה לעוד אפשרויות – בכל כרטיס יש שעות, ניווט ושיתוף."
                       : "👇 מסודר מהקרוב לרחוק. לחצו 🤍 כדי לשמור מקום לרשימה שלכם."}
                 </p>
+              )}
+              {!savedOnly && !itinerary && visible.length < 5 && (
+                <div className="mt-3 rounded-2xl border border-dashed border-primary/40 p-3 text-sm">
+                  <p className="mb-2">
+                    🤔 מצאנו מעט מקומות{origin ? ` ליד ${origin.label}` : ""}. מכירים מקום שפתוח
+                    בשבת באזור? ספרו לנו ונוסיף אותו להורים אחרים.
+                  </p>
+                  <SuggestAttraction
+                    label="➕ הוסיפו מקום שאתם מכירים"
+                    defaultCity={origin?.label}
+                    prominent
+                  />
+                </div>
               )}
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
                 <label className="glass-chip inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5">

@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { htmlToText, isSafePublicUrl, normalizeExtracted } from "../src/lib/page-extract.ts";
+import {
+  extractUrls,
+  htmlToText,
+  isSafePublicUrl,
+  normalizeExtracted,
+} from "../src/lib/page-extract.ts";
 
 test("only public http(s) sites are allowed", () => {
   assert.ok(isSafePublicUrl("https://www.safari.co.il/"));
@@ -60,4 +65,13 @@ test("AI output is validated into a safe draft", () => {
   const unknown = normalizeExtracted({ name: "מקום", open_shabbat: "maybe", min_age: 99 });
   assert.equal(unknown?.open_shabbat, null);
   assert.equal(unknown?.min_age, null);
+});
+
+test("links are pulled out of pasted text, de-duplicated and capped", () => {
+  const text = `ראו כאן https://a.co.il/x, וגם (https://b.org.il/kids)
+https://a.co.il/x
+לא קישור: www.c.co.il`;
+  assert.deepEqual(extractUrls(text), ["https://a.co.il/x", "https://b.org.il/kids"]);
+  const many = Array.from({ length: 40 }, (_, i) => `https://s${i}.co.il`).join("\n");
+  assert.equal(extractUrls(many).length, 25);
 });

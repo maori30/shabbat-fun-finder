@@ -1,4 +1,5 @@
 import type { PlaceResult } from "@/lib/places.functions";
+import { wazeUrl as wazeLink } from "@/lib/share";
 import { CommunityReports, daysAgoLabel, type ReportCounts } from "@/components/community-reports";
 
 /**
@@ -48,7 +49,7 @@ export function PlaceCard({
   const shabbatOpen = Boolean(p.openShabbat || p.saturdayHours);
   const isLocal = p.id.startsWith("local-");
   const isCommunity = p.id.startsWith("community-");
-  const wazeUrl = `https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`;
+  const wazeUrl = wazeLink(p);
   const shareText = [
     `חשבתי שניסע ל${p.name} בשבת! 🎈`,
     [
