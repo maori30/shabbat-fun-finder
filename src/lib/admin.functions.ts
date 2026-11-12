@@ -1,5 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { allowRequest } from "@/lib/rate-limit";
+import {
+  htmlToText,
+  isSafePublicUrl,
+  normalizeExtracted,
+  type ExtractedAttraction,
+} from "@/lib/page-extract";
 
 /**
  * Moderation of parent suggestions (table `external_attractions`).
@@ -133,6 +139,195 @@ export const reviewSuggestion = createServerFn({ method: "POST" })
       return { ok: true, data: null };
     } catch (e) {
       console.error("reviewSuggestion failed", e);
+      return { ok: false, error: "השמירה נכשלה" };
+    }
+  });
+
+// ---------------------------------------------------------------------------
+// Import an attraction from its website
+// ---------------------------------------------------------------------------
+
+export type ImportDraft = ExtractedAttraction & {
+  source_url: string;
+  lat: number | null;
+  lng: number | null;
+};
+
+const MAX_HTML_BYTES = 1_500_000;
+
+/** Fetch a public page, re-checking every redirect hop against the URL rules. */
+async function fetchPublicPage(start: URL): Promise<{ url: URL; html: string }> {
+  let url = start;
+  for (let hop = 0; hop < 4; hop++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    let res: Response;
+    try {
+      res = await fetch(url.toString(), {
+        redirect: "manual",
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; KidsShabbatFinder/1.0)",
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Language": "he,en;q=0.8",
+        },
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (res.status >= 300 && res.status < 400) {
+      const next = res.headers.get("location");
+      const safe = next ? isSafePublicUrl(new URL(next, url).toString()) : null;
+      if (!safe) throw new Error("הפניה לכתובת לא מורשית");
+      url = safe;
+      continue;
+    }
+    if (!res.ok) throw new Error(`האתר החזיר שגיאה ${res.status}`);
+    const type = res.headers.get("content-type") ?? "";
+    if (!/text\/html|application\/xhtml/i.test(type)) throw new Error("הכתובת אינה דף אינטרנט");
+    // Read at most MAX_HTML_BYTES.
+    const reader = res.body?.getReader();
+    if (!reader) return { url, html: await res.text() };
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (total < MAX_HTML_BYTES) {
+      const { done, value } = await reader.read();
+      if (done || !value) break;
+      chunks.push(value);
+      total += value.byteLength;
+    }
+    void reader.cancel().catch(() => {});
+    const buf = new Uint8Array(total);
+    let off = 0;
+    for (const c of chunks) {
+      buf.set(c.subarray(0, Math.min(c.byteLength, total - off)), off);
+      off += c.byteLength;
+      if (off >= total) break;
+    }
+    return { url, html: new TextDecoder("utf-8").decode(buf) };
+  }
+  throw new Error("יותר מדי הפניות");
+}
+
+const EXTRACT_SYSTEM =
+  'אתה מחלץ פרטים על אטרקציה לילדים מתוך תוכן של אתר אינטרנט ישראלי. החזר JSON בלבד: {"is_attraction": boolean, "name": string, "city": string|null, "address": string|null, "category": string|null, "description": string|null, "open_shabbat": boolean|null, "shabbat_hours": string|null, "environment": "ממוזג"|"פתוח"|"משולב"|null, "min_age": number|null, "max_age": number|null, "price": string|null}. כללים: השתמש רק במידע שמופיע בדף – אל תנחש. open_shabbat = true רק אם כתוב במפורש שפתוח בשבת או שיש שעות לשבת/יום ז\'/Saturday; false רק אם כתוב שסגור בשבת; אחרת null. shabbat_hours = שעות השבת כפי שכתובות (למשל "10:00–17:00"). description = 1–2 משפטים בעברית על מה יש שם לילדים. category = סוג המקום בעברית (למשל "פינת חי", "משחקייה", "סדנאות"). environment = ממוזג (בפנים), פתוח (בחוץ) או משולב. price = מחיר כפי שכתוב (למשל "45 ₪ לילד"). is_attraction = false אם הדף אינו מקום/פעילות לילדים או משפחות.';
+
+/** Read a website and turn it into a draft attraction card (not saved yet). */
+export const importFromUrl = createServerFn({ method: "POST" })
+  .inputValidator((d: { password: string; url: string }) => ({
+    password: String(d.password ?? "").slice(0, 200),
+    url: String(d.url ?? "").slice(0, 2000),
+  }))
+  .handler(async ({ data }): Promise<AdminResult<ImportDraft>> => {
+    const denied = await checkPassword(data.password);
+    if (denied) return { ok: false, error: denied };
+    const start = isSafePublicUrl(data.url);
+    if (!start) return { ok: false, error: "כתובת לא תקינה – הדביקו קישור מלא שמתחיל ב-https://" };
+    if (!(await allowRequest("import", 20, 10 * 60_000))) {
+      return { ok: false, error: "יותר מדי ייבואים ברצף – נסו שוב בעוד כמה דקות" };
+    }
+
+    let page: { url: URL; html: string };
+    try {
+      page = await fetchPublicPage(start);
+    } catch (e) {
+      console.error("importFromUrl fetch failed", e);
+      const msg = e instanceof Error && /[\u0590-\u05FF]/.test(e.message) ? e.message : "";
+      return { ok: false, error: msg || "לא הצלחנו לקרוא את האתר (אולי הוא חוסם גישה אוטומטית)" };
+    }
+    const text = htmlToText(page.html);
+    if (text.length < 80) {
+      return { ok: false, error: "בדף כמעט אין טקסט (ייתכן שהאתר נטען רק עם JavaScript)" };
+    }
+
+    let draft: ExtractedAttraction | null;
+    try {
+      const { callAi } = await import("@/lib/ai-client");
+      const raw = await callAi([
+        { role: "system", content: EXTRACT_SYSTEM },
+        { role: "user", content: `כתובת: ${page.url.toString()}\n\n${text}` },
+      ]);
+      draft = normalizeExtracted(raw);
+    } catch (e) {
+      console.error("importFromUrl AI failed", e);
+      return { ok: false, error: "שירות ה-AI עמוס כרגע – נסו שוב בעוד רגע" };
+    }
+    if (!draft) return { ok: false, error: "לא הצלחנו לזהות את שם המקום בדף" };
+
+    let coords: { lat: number; lng: number } | null = null;
+    try {
+      const { geocodeCity } = await import("@/lib/places.functions");
+      const where = [draft.name, draft.address ?? draft.city].filter(Boolean).join(", ");
+      coords = await geocodeCity({ data: { cityName: where } });
+      if (!coords && draft.city) coords = await geocodeCity({ data: { cityName: draft.city } });
+    } catch {
+      /* admin can paste coordinates */
+    }
+
+    return {
+      ok: true,
+      data: {
+        ...draft,
+        source_url: page.url.toString(),
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
+      },
+    };
+  });
+
+/** Build the card description: summary + Shabbat hours + price. */
+function cardDescription(d: Pick<ImportDraft, "description" | "shabbat_hours" | "price">) {
+  return [
+    d.description,
+    // LRI…PDI keeps "09:00–16:00" from rendering reversed inside Hebrew text.
+    d.shabbat_hours ? `🕐 שבת: \u2066${d.shabbat_hours}\u2069` : null,
+    d.price ? `💰 ${d.price}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+    .slice(0, 1000);
+}
+
+/** Save a reviewed draft as an approved attraction (shows up in searches). */
+export const saveImported = createServerFn({ method: "POST" })
+  .inputValidator((d: { password: string; draft: ImportDraft }) => ({
+    password: String(d.password ?? "").slice(0, 200),
+    draft: d.draft,
+  }))
+  .handler(async ({ data }): Promise<AdminResult<null>> => {
+    const denied = await checkPassword(data.password);
+    if (denied) return { ok: false, error: denied };
+    const d = normalizeExtracted(data.draft as unknown as Record<string, unknown>);
+    if (!d) return { ok: false, error: "חסר שם למקום" };
+    const source = isSafePublicUrl(String(data.draft?.source_url ?? ""));
+    const lat = Number(data.draft?.lat);
+    const lng = Number(data.draft?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return { ok: false, error: "חסר מיקום – הדביקו קואורדינטות לפני שמירה" };
+    }
+    if (lat < 29 || lat > 33.5 || lng < 34 || lng > 36) {
+      return { ok: false, error: "המיקום מחוץ לישראל – בדקו את הקואורדינטות" };
+    }
+    try {
+      const db = await adminClient();
+      const { error } = await db.from("external_attractions").insert({
+        name: d.name,
+        city: d.city,
+        description: cardDescription(d),
+        category: d.category,
+        open_shabbat: d.open_shabbat,
+        environment: d.environment,
+        min_age: d.min_age,
+        max_age: d.max_age,
+        lat,
+        lng,
+        source_url: source?.toString() ?? null,
+        is_approved: true,
+      });
+      if (error) throw error;
+      return { ok: true, data: null };
+    } catch (e) {
+      console.error("saveImported failed", e);
       return { ok: false, error: "השמירה נכשלה" };
     }
   });

@@ -1,16 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { geocodeCity, searchPlaces, type PlaceResult } from "@/lib/places.functions";
 import { distanceKm } from "@/lib/geo";
+import { callAi, envKey } from "@/lib/ai-client";
+import { cleanKeywords, mergePicks, planQueries, selectCandidates } from "@/lib/ai-candidates";
+import type { SearchHints } from "@/lib/prompt";
 import { allowRequest, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit";
-
-const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "openai/gpt-5.6-sol";
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-const GEMINI_MODEL = "gemini-3.8-flash";
 
 export type AiCriteria = {
   city: string | null;
   maxDriveMinutes: number | null;
+  /** When the parent states a distance ("עד 45 ק"מ") rather than a time. */
+  maxDistanceKm: number | null;
   ages: number[];
   freeOnly: boolean;
   budget: number | null;
@@ -45,166 +45,34 @@ export type AiSearchResult = {
 /** Shown to users instead of raw provider errors (which are only logged). */
 const AI_BUSY_MESSAGE = "שירות ה-AI עמוס כרגע – נסו שוב בעוד רגע";
 
-function envKey(...names: string[]): string | undefined {
-  const proc = typeof process !== "undefined" ? process.env : {};
-  const meta = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {};
-  for (const n of names) {
-    const v = proc[n] ?? meta[n];
-    if (v) return v;
-  }
-  return undefined;
-}
-
-async function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function callAiWithRetry(
-  endpoint: string,
-  model: string,
-  headers: Record<string, string>,
-  messages: { role: string; content: string }[],
-  maxRetries = 2,
-): Promise<Record<string, unknown>> {
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          model,
-          response_format: { type: "json_object" },
-          messages,
-        }),
-      });
-
-      if (!res.ok) {
-        const body = await res.text();
-        const err = new Error(`AI ${res.status}: ${body.slice(0, 200)}`);
-        // Retry on 503 (high demand) or 429 (rate limit)
-        if ((res.status === 503 || res.status === 429) && attempt < maxRetries) {
-          await delay(1000 * (attempt + 1));
-          continue;
-        }
-        throw err;
-      }
-
-      const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      const content = json.choices?.[0]?.message?.content ?? "{}";
-      try {
-        return JSON.parse(content) as Record<string, unknown>;
-      } catch {
-        const match = content.match(/\{[\s\S]*\}/);
-        return match ? (JSON.parse(match[0]) as Record<string, unknown>) : {};
-      }
-    } catch (err) {
-      lastError = err as Error;
-      if (attempt < maxRetries) {
-        await delay(1000 * (attempt + 1));
-      }
-    }
-  }
-  throw lastError ?? new Error("AI request failed");
-}
-
-async function callAi(messages: { role: string; content: string }[]) {
-  const lovableKey = envKey("LOVABLE_API_KEY");
-  const geminiKey = envKey("GEMINI_API_KEY", "VITE_GEMINI_API_KEY");
-
-  if (!lovableKey && !geminiKey) {
-    throw new Error("חסר מפתח AI");
-  }
-
-  // 1. Try Lovable API if key is present
-  if (lovableKey) {
-    try {
-      return await callAiWithRetry(
-        AI_URL,
-        MODEL,
-        {
-          "Content-Type": "application/json",
-          "Lovable-API-Key": lovableKey,
-        },
-        messages,
-        1,
-      );
-    } catch (e) {
-      console.warn("Lovable AI Gateway failed, checking Gemini fallback...", e);
-      if (!geminiKey) throw e;
-    }
-  }
-
-  // 2. Try Gemini API as fallback or primary
-  if (geminiKey) {
-    return await callAiWithRetry(
-      GEMINI_URL,
-      GEMINI_MODEL,
-      {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${geminiKey}`,
-      },
-      messages,
-      2,
-    );
-  }
-
-  throw new Error("לא ניתן להשלים את פניית ה-AI");
-}
-
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   return distanceKm({ lat: lat1, lng: lng1 }, { lat: lat2, lng: lng2 });
 }
 
-// Types that are usually free (or free to enter) — not just parks: beaches,
-// promenades, libraries, community centers, markets, plazas, lookouts,
-// historical/cultural sites and malls (window shopping + free play corners).
-const FREE_HINT_TYPES = new Set([
-  "park",
-  "national_park",
-  "state_park",
-  "playground",
-  "dog_park",
-  "library",
-  "community_center",
-  "botanical_garden",
-  "shopping_mall",
-  "beach",
-  "tourist_attraction",
-  "observation_deck",
-  "cultural_landmark",
-  "historical_place",
-  "plaza",
-  "hiking_area",
-  "marina",
-  "market",
-  "athletic_field",
-  "skateboard_park",
-  "sports_complex",
-  "cultural_center",
-  "art_gallery",
-  "visitor_center",
-  "monument",
-  "church",
-  "synagogue",
-  "farm",
-  "garden",
-  "picnic_ground",
-  "scenic_lookout",
-]);
-
-// Hebrew/English name hints for places that normally cost nothing to visit.
-const FREE_NAME_HINT =
-  /פארק|גן ?שעשועים|גן ציבורי|גינה|טיילת|חוף|כיכר|ספריי?ה|מרכז קהילתי|מתנ"?ס|שוק|תצפית|יער|נחל|מפל|מגרש|סקייט|מוזיאון פתוח|park|playground|beach|promenade|library|square|market|trail/i;
-
-// Extra search terms used when the parent asked for something free.
-const FREE_EXTRA_QUERIES = [
-  "גן שעשועים",
-  "פארק ציבורי",
-  "טיילת",
-  "ספרייה עירונית",
-  "מתחם משחקים חינם לילדים",
-];
+function sanitizeHints(h: Partial<SearchHints> | null | undefined): SearchHints | null {
+  if (!h || typeof h !== "object") return null;
+  const num = (v: unknown, lo: number, hi: number) =>
+    typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : null;
+  return {
+    keywords: Array.isArray(h.keywords)
+      ? h.keywords
+          .filter((k): k is string => typeof k === "string")
+          .map((k) => k.slice(0, 40))
+          .slice(0, 3)
+      : [],
+    indoorPreference:
+      h.indoorPreference === "ממוזג" || h.indoorPreference === "פתוח" ? h.indoorPreference : null,
+    ages: Array.isArray(h.ages)
+      ? h.ages
+          .map((a) => num(a, 0, 18))
+          .filter((a): a is number => a !== null)
+          .slice(0, 6)
+      : [],
+    maxDriveMinutes: num(h.maxDriveMinutes, 5, 180) ?? 0,
+    freeOnly: h.freeOnly === true,
+    budget: num(h.budget, 1, 10000),
+  };
+}
 
 export const aiSearch = createServerFn({ method: "POST" })
   .inputValidator(
@@ -213,6 +81,8 @@ export const aiSearch = createServerFn({ method: "POST" })
       fallbackOrigin?: { lat: number; lng: number; label: string } | null;
       mode?: "search" | "itinerary";
       weather?: string | null;
+      /** Structured choices from the main card; they override the AI's parsing. */
+      hints?: Partial<SearchHints> | null;
     }) => ({
       prompt: (data.prompt ?? "").trim().slice(0, 600),
       fallbackOrigin:
@@ -227,6 +97,7 @@ export const aiSearch = createServerFn({ method: "POST" })
           : null,
       mode: data.mode === "itinerary" ? ("itinerary" as const) : ("search" as const),
       weather: data.weather ? String(data.weather).slice(0, 120) : null,
+      hints: sanitizeHints(data.hints),
     }),
   )
   .handler(async ({ data }): Promise<AiSearchResult> => {
@@ -253,13 +124,14 @@ export const aiSearch = createServerFn({ method: "POST" })
         {
           role: "system",
           content:
-            'אתה מנתח בקשות של הורים בישראל למצוא פעילות לילדים. החזר JSON בלבד במבנה: {"city": string|null, "maxDriveMinutes": number|null, "ages": number[], "freeOnly": boolean, "budget": number|null, "indoorPreference": "ממוזג"|"פתוח"|"לא משנה", "shabbatOnly": boolean, "keywords": string[]}. budget = תקציב מקסימלי בשקלים למשפחה אם הוזכר. keywords = עד 3 מונחי חיפוש בעברית שמתאימים לבקשה. אם לא צוין דבר – השתמש ב-null/false/"לא משנה".',
+            'אתה מנתח בקשות של הורים בישראל למצוא פעילות לילדים. החזר JSON בלבד במבנה: {"city": string|null, "maxDriveMinutes": number|null, "maxDistanceKm": number|null, "ages": number[], "freeOnly": boolean, "budget": number|null, "indoorPreference": "ממוזג"|"פתוח"|"לא משנה", "shabbatOnly": boolean, "keywords": string[]}. maxDriveMinutes = רק אם צוינו דקות/שעות נסיעה; maxDistanceKm = רק אם צוינו קילומטרים (ק"מ). budget = תקציב מקסימלי בשקלים למשפחה אם הוזכר. indoorPreference = "ממוזג" אם ביקשו ממוזג/בפנים/מקורה, "פתוח" אם ביקשו בחוץ/טבע. keywords = עד 2 סוגי מקומות ספציפיים בעברית כפי שמחפשים בגוגל מפות, למשל "משחקייה", "פארק טרמפולינות", "מוזיאון ילדים", "באולינג", "פארק מים", "פינת חי" – אף פעם לא תיאורים כמו "מקום ממוזג", "פעילות לילדים" או "בשבת"; אם לא ביקשו סוג מקום מסוים – החזר מערך ריק. אם לא צוין דבר – השתמש ב-null/false/"לא משנה".',
         },
         { role: "user", content: data.prompt },
       ]);
       criteria = {
         city: typeof parsed.city === "string" ? parsed.city : null,
         maxDriveMinutes: typeof parsed.maxDriveMinutes === "number" ? parsed.maxDriveMinutes : null,
+        maxDistanceKm: typeof parsed.maxDistanceKm === "number" ? parsed.maxDistanceKm : null,
         ages: Array.isArray(parsed.ages)
           ? (parsed.ages as unknown[]).filter((a): a is number => typeof a === "number")
           : [],
@@ -281,6 +153,22 @@ export const aiSearch = createServerFn({ method: "POST" })
       return { ...empty, error: AI_BUSY_MESSAGE };
     }
 
+    // The card's explicit choices win over whatever the AI parsed.
+    const hints = data.hints;
+    if (hints) {
+      if (hints.keywords.length > 0) {
+        criteria.keywords = [...hints.keywords, ...cleanKeywords(criteria.keywords)].slice(0, 3);
+      }
+      if (hints.indoorPreference) criteria.indoorPreference = hints.indoorPreference;
+      if (hints.ages.length > 0) criteria.ages = hints.ages;
+      if (hints.maxDriveMinutes) {
+        criteria.maxDriveMinutes = hints.maxDriveMinutes;
+        criteria.maxDistanceKm = null;
+      }
+      if (hints.freeOnly) criteria.freeOnly = true;
+      if (hints.budget) criteria.budget = hints.budget;
+    }
+
     // 2) Resolve origin
     let origin = data.fallbackOrigin;
     if (criteria.city) {
@@ -291,19 +179,16 @@ export const aiSearch = createServerFn({ method: "POST" })
       return { ...empty, criteria, error: "לא זיהינו מאיפה יוצאים – כתבו עיר או אפשרו מיקום" };
     }
 
-    // 3) Search real places (~50 km/h in-city average)
-    const minutes = criteria.maxDriveMinutes ?? 40;
-    const radiusKm = Math.max(5, Math.min(50, Math.round((minutes / 60) * 50)));
-    const found: PlaceResult[] = [];
-    const seen = new Set<string>();
-    const baseQueries = criteria.keywords.length > 0 ? criteria.keywords : [""];
-    // For a free request, also sweep free-by-nature venues (playgrounds,
-    // promenades, beaches, libraries) and drop activity-mode's narrow type
-    // list so we don't end up with parks only.
-    // Capped at 4 searches (each one fans out to several Places calls).
-    const queries = criteria.freeOnly
-      ? [...baseQueries.slice(0, 1), ...FREE_EXTRA_QUERIES.slice(0, 3)]
-      : baseQueries.slice(0, 2);
+    // 3) Search real places. Radius from km if given, else drive time
+    // (~50 km/h average door to door).
+    const radiusKm = Math.max(
+      5,
+      Math.min(
+        50,
+        Math.round(criteria.maxDistanceKm ?? ((criteria.maxDriveMinutes ?? 40) / 60) * 50),
+      ),
+    );
+    const queries = planQueries(criteria);
     const responses = await Promise.all(
       queries.map((keyword) =>
         searchPlaces({
@@ -312,6 +197,7 @@ export const aiSearch = createServerFn({ method: "POST" })
             lng: origin.lng,
             radius: radiusKm * 1000,
             keyword,
+            // The broad sweep stays wide for "free" requests (parks, beaches…).
             activityMode: !criteria.freeOnly,
           },
         }),
@@ -320,6 +206,13 @@ export const aiSearch = createServerFn({ method: "POST" })
     if (responses.every((r) => r.places.length === 0) && responses.some((r) => r.error)) {
       return { ...empty, criteria, origin, error: responses.find((r) => r.error)?.error };
     }
+    const found: PlaceResult[] = [];
+    const seen = new Set<string>();
+    // Places returned by the parent's own keywords/vibe searches rank higher.
+    const boostIds = new Set<string>();
+    responses.forEach((res, i) => {
+      if (queries[i]) for (const p of res.places) boostIds.add(p.id);
+    });
     for (const res of responses) {
       for (const p of res.places) {
         if (!seen.has(p.id)) {
@@ -329,27 +222,7 @@ export const aiSearch = createServerFn({ method: "POST" })
       }
     }
 
-    let candidates = found.filter(
-      (p) => haversineKm(origin!.lat, origin!.lng, p.lat, p.lng) <= radiusKm,
-    );
-    if (criteria.shabbatOnly) {
-      const openSat = candidates.filter((p) => p.openShabbat === true || p.saturdayHours);
-      if (openSat.length >= 3) candidates = openSat;
-    }
-    if (criteria.ages.length > 0) {
-      const minAge = Math.min(...criteria.ages);
-      const maxAge = Math.max(...criteria.ages);
-      const fits = candidates.filter(
-        (p) => !p.ageRange || (p.ageRange.min <= maxAge && p.ageRange.max >= minAge),
-      );
-      if (fits.length >= 3) candidates = fits;
-    }
-    if (criteria.freeOnly) {
-      const freeish = candidates.filter(
-        (p) => p.types.some((t) => FREE_HINT_TYPES.has(t)) || FREE_NAME_HINT.test(p.name),
-      );
-      if (freeish.length >= 1) candidates = freeish;
-    }
+    const candidates = selectCandidates(found, criteria, origin, radiusKm, 4, boostIds);
 
     if (candidates.length === 0) {
       return {
@@ -393,7 +266,7 @@ export const aiSearch = createServerFn({ method: "POST" })
               {
                 role: "system",
                 content:
-                  'אתה עוזר להורה להחליט מה לעשות עם הילדים – לא רק לרשום אפשרויות. בחר עד 6 מקומות מהרשימה, כשהראשון הוא הבחירה הטובה ביותר. החזר JSON בלבד: {"summary": string, "picks": [{"id": string, "reason": string, "checks": string[], "priceEstimate": string}]}. summary = משפט אחד בעברית שמסביר מה חיפשנו ומה מצאנו. reason = משפט קצר בעברית שמתחיל ב"למה בחרנו בזה:" ומסביר בדיוק למה זה מתאים להורה הזה. checks = 3–5 פריטים קצרצרים בעברית לסימון ✓, למשל "מתאים לגילאים 4–7", "פתוח בשבת", "ממוזג", "18 דקות נסיעה". priceEstimate = הערכת עלות בעברית כמו "כ־120 ₪ למשפחה" או "חינם", ואם אין מידע – "מחיר לא ידוע".',
+                  'אתה עוזר להורה להחליט מה לעשות עם הילדים – לא רק לרשום אפשרויות. בחר עד 8 מקומות מהרשימה (העדף מקומות שבאמת מתאימים לבקשה – למשל ממוזג אם ביקשו ממוזג – ודלג על מקומות לא רלוונטיים), כשהראשון הוא הבחירה הטובה ביותר. החזר JSON בלבד: {"summary": string, "picks": [{"id": string, "reason": string, "checks": string[], "priceEstimate": string}]}. summary = משפט אחד בעברית שמסביר מה חיפשנו ומה מצאנו. reason = משפט קצר בעברית שמתחיל ב"למה בחרנו בזה:" ומסביר בדיוק למה זה מתאים להורה הזה. checks = 3–5 פריטים קצרצרים בעברית לסימון ✓, למשל "מתאים לגילאים 4–7", "פתוח בשבת", "ממוזג", "18 דקות נסיעה". priceEstimate = הערכת עלות בעברית כמו "כ־120 ₪ למשפחה" או "חינם", ואם אין מידע – "מחיר לא ידוע".',
               },
               {
                 role: "user",
@@ -451,7 +324,12 @@ export const aiSearch = createServerFn({ method: "POST" })
           ordered.unshift(place);
         }
       }
-      const places = ordered.length > 0 ? ordered : candidates.slice(0, 8);
+      // AI picks first (with reasons), then the other matching places so the
+      // parent still has plenty of options if the AI picked only a few.
+      const places = mergePicks(
+        ordered.map((p) => p.id),
+        candidates,
+      );
       return {
         summary: typeof ranked.summary === "string" ? ranked.summary : "",
         criteria,
@@ -471,7 +349,7 @@ export const aiSearch = createServerFn({ method: "POST" })
         summary: "הצגנו את המקומות הקרובים שמצאנו (הדירוג החכם לא היה זמין כרגע).",
         criteria,
         origin,
-        places: candidates.slice(0, 8),
+        places: candidates.slice(0, 40),
         reasons: {},
         checks: {},
         priceEstimates: {},

@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { listSuggestions, reviewSuggestion, type PendingSuggestion } from "@/lib/admin.functions";
 import { parseCoords } from "@/lib/coords";
+import { ImportFromUrl } from "@/components/admin/import-from-url";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -129,6 +130,8 @@ function AdminPage() {
             {loading ? "טוען..." : "טען"}
           </button>
         </form>
+
+        <ImportFromUrl password={password} />
 
         {error && (
           <div role="alert" className="text-sm text-rose-700 dark:text-rose-300">
