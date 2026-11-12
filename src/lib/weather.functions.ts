@@ -2,11 +2,16 @@
  * Fetches the weekend weather forecast for a given location using open-meteo API.
  * Returns a simple string describing the weekend weather condition.
  */
-export async function getWeekendWeather(lat: number, lng: number): Promise<{ description: string; isHot: boolean; isRainy: boolean } | null> {
+export async function getWeekendWeather(
+  lat: number,
+  lng: number,
+): Promise<{ description: string; isHot: boolean; isRainy: boolean } | null> {
   try {
     // We only need daily max temperature and precipitation to determine basic weather
-    const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,precipitation_probability_max&timezone=auto`);
-    
+    const response = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,precipitation_probability_max&timezone=Asia%2FJerusalem`,
+    );
+
     if (!response.ok) return null;
 
     const data = await response.json();
@@ -15,15 +20,14 @@ export async function getWeekendWeather(lat: number, lng: number): Promise<{ des
     const precipProb: number[] = data.daily.precipitation_probability_max;
 
     // Find Saturday
-    const saturdayIndex = times.findIndex(t => {
-      const date = new Date(t);
-      return date.getDay() === 6; // 6 is Saturday
-    });
+    // Dates come back as "YYYY-MM-DD" in Israel time. Parse at noon UTC so the
+    // weekday doesn't shift with the visitor's own timezone.
+    const saturdayIndex = times.findIndex((t) => new Date(`${t}T12:00:00Z`).getUTCDay() === 6);
 
     if (saturdayIndex === -1) return null; // Couldn't find a Saturday in the forecast (usually 7 days)
 
-    const satTemp = tempMax[saturdayIndex];
-    const satPrecip = precipProb[saturdayIndex];
+    const satTemp = Math.round(tempMax[saturdayIndex] ?? 0);
+    const satPrecip = precipProb[saturdayIndex] ?? 0;
 
     let isHot = false;
     let isRainy = false;

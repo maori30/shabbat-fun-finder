@@ -16,6 +16,57 @@ export type PlaceReport = {
   created_at: string;
 };
 
+export type ReportCounts = { open: number; closed: number; lastOpenAt: string | null };
+
+/**
+ * One query for a whole result list instead of one per card.
+ * Returns counts keyed by place id (places without reports are omitted).
+ */
+export async function fetchReportCounts(placeIds: string[]): Promise<Record<string, ReportCounts>> {
+  const ids = Array.from(new Set(placeIds)).slice(0, 100);
+  if (ids.length === 0) return {};
+  const since = new Date(Date.now() - 180 * 24 * 3600 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("place_reports")
+    .select("place_id, status, created_at")
+    .in("place_id", ids)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(2000);
+  if (error || !data) return {};
+  const out: Record<string, ReportCounts> = {};
+  for (const r of data as { place_id: string; status: string; created_at: string }[]) {
+    const c = (out[r.place_id] ??= { open: 0, closed: 0, lastOpenAt: null });
+    if (r.status === "open") {
+      c.open += 1;
+      if (!c.lastOpenAt) c.lastOpenAt = r.created_at;
+    } else if (r.status === "closed") c.closed += 1;
+  }
+  return out;
+}
+
+export function daysAgoLabel(iso: string) {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / (24 * 3600 * 1000));
+  if (days <= 0) return "היום";
+  if (days === 1) return "אתמול";
+  if (days < 7) return `לפני ${days} ימים`;
+  if (days < 14) return "לפני שבוע";
+  if (days < 60) return `לפני ${Math.round(days / 7)} שבועות`;
+  return `לפני ${Math.round(days / 30)} חודשים`;
+}
+
+// Throttle: one report per place per device every 12 hours.
+const REPORT_THROTTLE_MS = 12 * 3600 * 1000;
+const throttleKey = (placeId: string) => `kids_reported_${placeId}`;
+function recentlyReported(placeId: string) {
+  try {
+    const at = Number(localStorage.getItem(throttleKey(placeId)) ?? 0);
+    return Date.now() - at < REPORT_THROTTLE_MS;
+  } catch {
+    return false;
+  }
+}
+
 const CROWD_LABEL: Record<string, string> = {
   empty: "🟢 ריק ונוח",
   ok: "🟡 סביר",
@@ -25,9 +76,12 @@ const CROWD_LABEL: Record<string, string> = {
 export function CommunityReports({
   placeId,
   placeName,
+  initialCounts,
 }: {
   placeId: string;
   placeName: string;
+  /** Batched counts from the parent list; `undefined` = fetch for this card. */
+  initialCounts?: ReportCounts | null;
 }) {
   const [open, setOpen] = useState(false);
   const [reports, setReports] = useState<PlaceReport[] | null>(null);
@@ -36,7 +90,11 @@ export function CommunityReports({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
-  const [counts, setCounts] = useState<{ open: number; closed: number } | null>(null);
+  const [counts, setCounts] = useState<ReportCounts | null>(initialCounts ?? null);
+
+  useEffect(() => {
+    if (initialCounts !== undefined) setCounts(initialCounts);
+  }, [initialCounts]);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -51,33 +109,41 @@ export function CommunityReports({
       setCounts({
         open: list.filter((r) => r.status === "open").length,
         closed: list.filter((r) => r.status === "closed").length,
+        lastOpenAt: list.find((r) => r.status === "open")?.created_at ?? null,
       });
     }
   };
 
-  // Load the summary counts once per card so the badge is visible without opening.
+  // Fallback for cards rendered without batched counts.
   useEffect(() => {
+    if (initialCounts !== undefined) return;
     let alive = true;
     (async () => {
       const { data } = await supabase
         .from("place_reports")
-        .select("status")
+        .select("status, created_at")
         .eq("place_id", placeId)
+        .order("created_at", { ascending: false })
         .limit(200);
       if (!alive || !data) return;
       setCounts({
-        open: data.filter((r) => r.status === "open").length,
-        closed: data.filter((r) => r.status === "closed").length,
+        open: data.filter((r: { status: string }) => r.status === "open").length,
+        closed: data.filter((r: { status: string }) => r.status === "closed").length,
+        lastOpenAt: data.find((r: { status: string }) => r.status === "open")?.created_at ?? null,
       });
     })();
     return () => {
       alive = false;
     };
-  }, [placeId]);
+  }, [placeId, initialCounts]);
 
   const submit = async () => {
     if (!status) {
       setMsg("בחרו אם היה פתוח או סגור");
+      return;
+    }
+    if (recentlyReported(placeId)) {
+      setMsg("כבר דיווחתם על המקום הזה היום – תודה!");
       return;
     }
     setSaving(true);
@@ -93,6 +159,11 @@ export function CommunityReports({
     if (error) {
       setMsg("שמירת הדיווח נכשלה, נסו שוב");
       return;
+    }
+    try {
+      localStorage.setItem(throttleKey(placeId), String(Date.now()));
+    } catch {
+      /* private mode — skip throttle */
     }
     setMsg("תודה! הדיווח נשמר 🙏");
     setStatus("");
@@ -119,7 +190,10 @@ export function CommunityReports({
         {counts && (counts.open > 0 || counts.closed > 0) && (
           <>
             {counts.open > 0 && (
-              <span className="glass-badge-success">👍 {counts.open} דיווחו פתוח בשבת</span>
+              <span className="glass-badge-success">
+                👍 {counts.open} דיווחו פתוח בשבת
+                {counts.lastOpenAt ? ` · אחרון ${daysAgoLabel(counts.lastOpenAt)}` : ""}
+              </span>
             )}
             {counts.closed > 0 && (
               <span className="glass-badge-danger">👎 {counts.closed} דיווחו סגור</span>

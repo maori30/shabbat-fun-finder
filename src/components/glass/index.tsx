@@ -20,38 +20,50 @@
  * Every primitive here already has matching dark styles.
  */
 
-import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes, type AnchorHTMLAttributes } from "react";
+import {
+  forwardRef,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type InputHTMLAttributes,
+  type SelectHTMLAttributes,
+  type AnchorHTMLAttributes,
+} from "react";
 import { cn } from "@/lib/utils";
 
 type DivProps = HTMLAttributes<HTMLDivElement>;
 
-export const GlassPanel = forwardRef<HTMLDivElement, DivProps>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("glass-panel rounded-2xl p-4", className)} {...props} />
-  ),
-);
+export const GlassPanel = forwardRef<HTMLDivElement, DivProps>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("glass-panel rounded-2xl p-4", className)} {...props} />
+));
 GlassPanel.displayName = "GlassPanel";
 
-export const GlassCard = forwardRef<HTMLDivElement, DivProps>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("glass-card rounded-2xl p-4", className)} {...props} />
-  ),
-);
+export const GlassCard = forwardRef<HTMLDivElement, DivProps>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("glass-card rounded-2xl p-4", className)} {...props} />
+));
 GlassCard.displayName = "GlassCard";
 
 export const GlassEmpty = ({ className, ...props }: DivProps) => (
-  <div className={cn("glass-empty rounded-2xl p-8 text-center text-muted-foreground", className)} {...props} />
+  <div
+    className={cn("glass-empty rounded-2xl p-8 text-center text-muted-foreground", className)}
+    {...props}
+  />
 );
 
 export const GlassHeader = ({ className, ...props }: HTMLAttributes<HTMLElement>) => (
-  <header className={cn("glass-header rounded-b-[28px] text-primary-foreground", className)} {...props} />
+  <header
+    className={cn("glass-header rounded-b-[28px] text-primary-foreground", className)}
+    {...props}
+  />
 );
 
 export const GlassField = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (
     <input
       ref={ref}
-      className={cn("glass-field w-full rounded-xl px-4 py-3 text-base text-foreground placeholder:text-muted-foreground", className)}
+      className={cn(
+        "glass-field w-full rounded-xl px-4 py-3 text-base text-foreground placeholder:text-muted-foreground",
+        className,
+      )}
       {...props}
     />
   ),
@@ -93,18 +105,15 @@ GlassButton.displayName = "GlassButton";
 
 export const GlassChip = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => (
   <span
-    className={cn("glass-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs whitespace-nowrap", className)}
+    className={cn(
+      "glass-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs whitespace-nowrap",
+      className,
+    )}
     {...props}
   />
 );
 
-export type GlassBadgeTone =
-  | "default"
-  | "success"
-  | "danger"
-  | "info"
-  | "warning"
-  | "neutral";
+export type GlassBadgeTone = "default" | "success" | "danger" | "info" | "warning" | "neutral";
 
 const badgeClass: Record<GlassBadgeTone, string> = {
   default: "glass-badge",

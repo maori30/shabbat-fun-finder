@@ -1,9 +1,14 @@
 ﻿import { createClient } from "@supabase/supabase-js";
 import { createServerFn } from "@tanstack/react-start";
+import { distanceKm } from "@/lib/geo";
+import { allowRequest, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
 const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
-const searchCache = new Map<string, { expiresAt: number; data: { places: PlaceResult[]; error?: string } }>();
+const searchCache = new Map<
+  string,
+  { expiresAt: number; data: { places: PlaceResult[]; error?: string } }
+>();
 
 // Places API searchNearby limits combos across category tables, so we
 // run several small nearby searches in parallel and merge the results.
@@ -85,21 +90,31 @@ export type PlaceResult = {
 };
 
 const INDOOR_TYPES = new Set([
-  "shopping_mall", "movie_theater", "aquarium", "museum", "bowling_alley",
-  "amusement_center", "art_gallery", "library", "restaurant", "cafe",
+  "shopping_mall",
+  "movie_theater",
+  "aquarium",
+  "museum",
+  "bowling_alley",
+  "amusement_center",
+  "art_gallery",
+  "library",
+  "restaurant",
+  "cafe",
 ]);
 const OUTDOOR_TYPES = new Set([
-  "park", "national_park", "playground", "zoo", "amusement_park",
-  "tourist_attraction", "campground", "beach",
+  "park",
+  "national_park",
+  "playground",
+  "zoo",
+  "amusement_park",
+  "tourist_attraction",
+  "campground",
+  "beach",
 ]);
 const MIXED_TYPES = new Set(["water_park"]);
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return distanceKm({ lat: lat1, lng: lng1 }, { lat: lat2, lng: lng2 });
 }
 
 function formatTime(hour?: number, minute?: number) {
@@ -108,7 +123,12 @@ function formatTime(hour?: number, minute?: number) {
 }
 
 function getHoursForDay(
-  periods: { open?: { day?: number; hour?: number; minute?: number }; close?: { day?: number; hour?: number; minute?: number } }[] | undefined,
+  periods:
+    | {
+        open?: { day?: number; hour?: number; minute?: number };
+        close?: { day?: number; hour?: number; minute?: number };
+      }[]
+    | undefined,
   day: number,
 ) {
   const period = periods?.find((item) => item.open?.day === day);
@@ -122,7 +142,10 @@ function getHoursForDay(
 }
 
 function israelDayOfWeek() {
-  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Jerusalem", weekday: "short" }).format(new Date());
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    weekday: "short",
+  }).format(new Date());
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekday);
 }
 
@@ -150,7 +173,6 @@ function inferAgeRange(types: string[], name: string): PlaceResult["ageRange"] {
   if (types.includes("shopping_mall")) return { min: 0, max: 16 };
   return null;
 }
-
 
 // Google rarely returns a rich editorial summary for smaller local venues,
 // so we build a short, friendly Hebrew description from the place's type
@@ -293,16 +315,25 @@ function buildPhotoUri(photoName: string | undefined, apiKey: string | undefined
 }
 
 export const searchPlaces = createServerFn({ method: "POST" })
-  .inputValidator((data: { lat: number; lng: number; radius: number; keyword?: string; activityMode?: boolean }) => {
-    if (typeof data.lat !== "number" || typeof data.lng !== "number") throw new Error("Bad coords");
-    return {
-      lat: data.lat,
-      lng: data.lng,
-      radius: Math.min(Math.max(data.radius, 500), 50000),
-      keyword: (data.keyword ?? "").slice(0, 100),
-      activityMode: !!data.activityMode,
-    };
-  })
+  .inputValidator(
+    (data: {
+      lat: number;
+      lng: number;
+      radius: number;
+      keyword?: string;
+      activityMode?: boolean;
+    }) => {
+      if (typeof data.lat !== "number" || typeof data.lng !== "number")
+        throw new Error("Bad coords");
+      return {
+        lat: data.lat,
+        lng: data.lng,
+        radius: Math.min(Math.max(data.radius, 500), 50000),
+        keyword: (data.keyword ?? "").slice(0, 100),
+        activityMode: !!data.activityMode,
+      };
+    },
+  )
   .handler(async ({ data }): Promise<{ places: PlaceResult[]; error?: string }> => {
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
     const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
@@ -320,6 +351,10 @@ export const searchPlaces = createServerFn({ method: "POST" })
     const cached = searchCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.data;
+    }
+    // Each uncached search fans out to ~10 paid Places calls — throttle per IP.
+    if (!(await allowRequest("places", 30, 60_000))) {
+      return { places: [], error: RATE_LIMIT_MESSAGE };
     }
 
     const fieldMask = [
@@ -361,7 +396,10 @@ export const searchPlaces = createServerFn({ method: "POST" })
       currentOpeningHours?: { openNow?: boolean };
       regularOpeningHours?: {
         weekdayDescriptions?: string[];
-        periods?: { open?: { day?: number; hour?: number; minute?: number }; close?: { day?: number; hour?: number; minute?: number } }[];
+        periods?: {
+          open?: { day?: number; hour?: number; minute?: number };
+          close?: { day?: number; hour?: number; minute?: number };
+        }[];
       };
       editorialSummary?: { text?: string };
       photos?: { name?: string; widthPx?: number; heightPx?: number }[];
@@ -400,8 +438,14 @@ export const searchPlaces = createServerFn({ method: "POST" })
         }),
       ];
     } else {
-      const typeGroups = (data.activityMode ? ACTIVITY_TYPE_GROUPS : TYPE_GROUPS).slice(0, data.activityMode ? 5 : 6);
-      const textQueries = (data.activityMode ? ACTIVITY_TEXT_QUERIES : TEXT_QUERIES).slice(0, data.activityMode ? 4 : 5);
+      const typeGroups = (data.activityMode ? ACTIVITY_TYPE_GROUPS : TYPE_GROUPS).slice(
+        0,
+        data.activityMode ? 5 : 6,
+      );
+      const textQueries = (data.activityMode ? ACTIVITY_TEXT_QUERIES : TEXT_QUERIES).slice(
+        0,
+        data.activityMode ? 4 : 5,
+      );
       batches = [
         ...typeGroups.map((includedTypes) =>
           callGoogle("places/v1/places:searchNearby", {
@@ -410,7 +454,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
             languageCode: "he",
             regionCode: "IL",
             locationRestriction: { circle },
-          })
+          }),
         ),
         ...textQueries.map((textQuery) =>
           callGoogle("places/v1/places:searchText", {
@@ -419,7 +463,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
             regionCode: "IL",
             maxResultCount: 8,
             locationBias: { circle },
-          })
+          }),
         ),
       ];
     }
@@ -480,31 +524,58 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // list as separate places. Instead we *demote* their ranking so real attractions
     // surface first, while still surfacing the mall as a fallback with a warning flag.
     const SOFT_DEMOTE_IN_ACTIVITY = new Set([
-      "shopping_mall", "supermarket", "grocery_store", "lodging", "hotel",
-      "bar", "night_club", "gas_station",
+      "shopping_mall",
+      "supermarket",
+      "grocery_store",
+      "lodging",
+      "hotel",
+      "bar",
+      "night_club",
+      "gas_station",
     ]);
     // Plain restaurants/cafes with no attraction signal are still dropped —
     // they rarely hide a kids' attraction the way malls do.
     const HARD_EXCLUDE_IN_ACTIVITY = new Set([
-      "restaurant", "hamburger_restaurant", "pizza_restaurant", "family_restaurant",
-      "cafe", "coffee_shop", "bakery", "dessert_shop", "ice_cream_shop",
+      "restaurant",
+      "hamburger_restaurant",
+      "pizza_restaurant",
+      "family_restaurant",
+      "cafe",
+      "coffee_shop",
+      "bakery",
+      "dessert_shop",
+      "ice_cream_shop",
     ]);
     const ATTRACTION_BOOST = new Set([
-      "amusement_park", "amusement_center", "water_park", "zoo", "aquarium",
-      "museum", "planetarium", "playground", "tourist_attraction",
-      "adventure_sports_center", "roller_coaster", "swimming_pool",
-      "ice_skating_rink", "bowling_alley", "video_arcade", "movie_theater",
+      "amusement_park",
+      "amusement_center",
+      "water_park",
+      "zoo",
+      "aquarium",
+      "museum",
+      "planetarium",
+      "playground",
+      "tourist_attraction",
+      "adventure_sports_center",
+      "roller_coaster",
+      "swimming_pool",
+      "ice_skating_rink",
+      "bowling_alley",
+      "video_arcade",
+      "movie_theater",
     ]);
     // Name patterns that hint at a kids' attraction hidden inside a bigger venue
     // (e.g. "קניון עזריאלי - פעלטון", "יס פלאנט", "Cinema City בתוך הקניון").
-    const HIDDEN_ATTRACTION_NAME_HINT = /פעלטון|משחקיה|משחקייה|יס פלאנט|טרמפולין|סינמה|קולנוע|באולינג|ג'ימבורי|קידילנד|Cinema/i;
+    const HIDDEN_ATTRACTION_NAME_HINT =
+      /פעלטון|משחקיה|משחקייה|יס פלאנט|טרמפולין|סינמה|קולנוע|באולינג|ג'ימבורי|קידילנד|Cinema/i;
 
-    let finalPlaces: PlaceResult[] = places
+    const finalPlaces: PlaceResult[] = places
       .filter((p) => {
         if (!data.activityMode) return true;
         const hasAttraction = p.types.some((t) => ATTRACTION_BOOST.has(t));
         const hasHiddenHint = HIDDEN_ATTRACTION_NAME_HINT.test(p.name);
-        const isHardExcluded = p.types.length > 0 && p.types.every((t) => HARD_EXCLUDE_IN_ACTIVITY.has(t));
+        const isHardExcluded =
+          p.types.length > 0 && p.types.every((t) => HARD_EXCLUDE_IN_ACTIVITY.has(t));
         // Drop only plain restaurants/cafes with zero attraction signal.
         if (isHardExcluded && !hasAttraction && !hasHiddenHint) return false;
         return true;
@@ -533,31 +604,41 @@ export const searchPlaces = createServerFn({ method: "POST" })
       return a.name.localeCompare(b.name, "he");
     });
 
-        // --- Hybrid Search: Fetch from Supabase ---
-    let supabasePlaces: PlaceResult[] = [];
+    // --- Hybrid Search: approved community suggestions from Supabase ---
+    const supabasePlaces: PlaceResult[] = [];
     const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const SUPABASE_KEY =
+      process.env.VITE_SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     if (SUPABASE_URL && SUPABASE_KEY) {
       try {
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
         const { data: dbAttractions } = await supabase
-          .from('external_attractions')
-          .select('*')
-          .eq('is_approved', true);
-        
+          .from("external_attractions")
+          .select("*")
+          .eq("is_approved", true);
+
         if (dbAttractions) {
           for (const item of dbAttractions) {
             // Distance filter
-            if (item.lat && item.lng && haversineKm(data.lat, data.lng, item.lat, item.lng) <= data.radius / 1000) {
+            if (
+              item.lat &&
+              item.lng &&
+              haversineKm(data.lat, data.lng, item.lat, item.lng) <= data.radius / 1000
+            ) {
               supabasePlaces.push({
-                id: item.id,
+                id: `community-${item.id}`,
                 name: item.name,
                 address: item.city || "",
                 lat: item.lat,
                 lng: item.lng,
-                rating: 5,
-                userRatingCount: 1,
-                mapsUri: item.source_url || "",
+                // Community suggestions have no ratings — don't invent any.
+                rating: null,
+                userRatingCount: null,
+                mapsUri: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  `${item.name} ${item.city ?? ""}`.trim(),
+                )}`,
                 websiteUri: item.source_url || null,
                 primaryType: item.category,
                 primaryTypeId: "custom",
@@ -567,7 +648,8 @@ export const searchPlaces = createServerFn({ method: "POST" })
                 saturdayHours: null,
                 todayHours: null,
                 environment: item.environment,
-                ageRange: item.min_age && item.max_age ? { min: item.min_age, max: item.max_age } : null,
+                ageRange:
+                  item.min_age && item.max_age ? { min: item.min_age, max: item.max_age } : null,
                 price: null,
                 description: item.description,
                 photoUri: null,
@@ -575,7 +657,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
                 stroller_accessible: item.stroller_accessible,
                 changing_table: item.changing_table,
                 easy_parking: item.easy_parking,
-                isSoftDemoted: false
+                isSoftDemoted: false,
               });
             }
           }
@@ -586,14 +668,29 @@ export const searchPlaces = createServerFn({ method: "POST" })
     }
     // ------------------------------------------
 
-    finalPlaces = [...supabasePlaces, ...finalPlaces];
-    return {
-      places: finalPlaces
+    // Merge suggestions into the distance-ordered list instead of pinning
+    // them on top, and skip ones Google already returned under the same name.
+    const googleNames = new Set(finalPlaces.map((p) => p.name.trim().toLowerCase()));
+    const withSuggestions = [
+      ...finalPlaces,
+      ...supabasePlaces.filter((p) => !googleNames.has(p.name.trim().toLowerCase())),
+    ].sort(
+      (a, b) =>
+        haversineKm(data.lat, data.lng, a.lat, a.lng) -
+        haversineKm(data.lat, data.lng, b.lat, b.lng),
+    );
+    const result = {
+      places: withSuggestions
         .slice(0, 60)
         .map((p) => ({ ...p, isSoftDemoted: p.isSoftDemoted ?? false })),
     };
+    searchCache.set(cacheKey, { expiresAt: Date.now() + SEARCH_CACHE_TTL_MS, data: result });
+    if (searchCache.size > 500) {
+      const now = Date.now();
+      for (const [k, v] of searchCache) if (v.expiresAt <= now) searchCache.delete(k);
+    }
+    return result;
   });
-
 
 // Free-text city geocoding — lets users search any city in Israel, not just
 // the ones hardcoded in the client-side CITY_COORDS list.
@@ -605,6 +702,7 @@ export const geocodeCity = createServerFn({ method: "POST" })
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
     const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
     if (!LOVABLE_API_KEY || !GOOGLE_MAPS_API_KEY || !data.cityName) return null;
+    if (!(await allowRequest("geocode", 30, 60_000))) return null;
 
     const res = await fetch(`${GATEWAY_URL}/places/v1/places:searchText`, {
       method: "POST",
@@ -622,7 +720,12 @@ export const geocodeCity = createServerFn({ method: "POST" })
       }),
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as { places?: { location?: { latitude: number; longitude: number }; displayName?: { text?: string } }[] };
+    const json = (await res.json()) as {
+      places?: {
+        location?: { latitude: number; longitude: number };
+        displayName?: { text?: string };
+      }[];
+    };
     const place = json.places?.[0];
     if (!place?.location) return null;
     return {
@@ -631,4 +734,3 @@ export const geocodeCity = createServerFn({ method: "POST" })
       label: place.displayName?.text ?? data.cityName,
     };
   });
-

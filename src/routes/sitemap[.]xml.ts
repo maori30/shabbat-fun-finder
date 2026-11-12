@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
-
-const BASE_URL = "https://shabbat-fun-finder.lovable.app";
+import { CITY_COORDS, citySlug } from "@/lib/geo";
+import { SITE_URL as BASE_URL } from "@/lib/site";
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
@@ -9,6 +9,11 @@ export const Route = createFileRoute("/sitemap.xml")({
       GET: async () => {
         const entries = [
           { path: "/", changefreq: "weekly", priority: "1.0" },
+          ...Object.keys(CITY_COORDS).map((city) => ({
+            path: `/ir/${encodeURIComponent(citySlug(city))}`,
+            changefreq: "weekly",
+            priority: "0.7",
+          })),
         ];
 
         const urls = entries
