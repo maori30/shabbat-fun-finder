@@ -1,5 +1,5 @@
 import type { PlaceResult } from "@/lib/places.functions";
-import { CommunityReports } from "@/components/community-reports";
+import { CommunityReports, daysAgoLabel, type ReportCounts } from "@/components/community-reports";
 
 /**
  * A single place, presented as a *decision* rather than a row in a list.
@@ -33,17 +33,38 @@ export function PlaceCard({
   updatedAt,
   saturdayOpen,
   onToggleSaturday,
+  reportCounts,
 }: PlaceCardData & {
   saved: boolean;
   onToggleSave: () => void;
   updatedAt: number | null;
   saturdayOpen: boolean;
   onToggleSaturday: () => void;
+  /** Pre-fetched report counts (one batched query for the whole list). */
+  reportCounts?: ReportCounts | null;
 }) {
   const isTop = rank === 1;
   const shabbatKnown = p.openShabbat !== null || Boolean(p.saturdayHours);
   const shabbatOpen = Boolean(p.openShabbat || p.saturdayHours);
   const isLocal = p.id.startsWith("local-");
+  const isCommunity = p.id.startsWith("community-");
+  const wazeUrl = `https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`;
+  const shareText = [
+    `חשבתי שניסע ל${p.name} בשבת! 🎈`,
+    [
+      shabbatOpen
+        ? "לפי המידע זה פתוח בשבת"
+        : shabbatKnown
+          ? "שימו לב: כנראה סגור בשבת"
+          : "כדאי לוודא שעות פתיחה בשבת",
+      p.environment === "ממוזג" ? "ממוזג" : p.environment === "פתוח" ? "בחוץ" : null,
+      dist !== null ? `בערך ${driveMinutes(dist)} דקות נסיעה מאיתנו` : null,
+    ]
+      .filter(Boolean)
+      .join(", ") + ".",
+    "",
+    `לינק לוויז: ${wazeUrl}`,
+  ].join("\n");
 
   const autoChecks: string[] = [];
   if (p.ageRange) autoChecks.push(`מתאים לגילאי ${p.ageRange.min}–${p.ageRange.max}`);
@@ -85,7 +106,8 @@ export function PlaceCard({
           <div className="text-3xl">{p.emoji}</div>
           <h3 className={`mt-1 font-bold ${isTop ? "text-2xl" : "text-lg"}`}>{p.name}</h3>
           <div className="text-sm text-muted-foreground">
-            {p.primaryType ?? "מקום"} {p.rating ? `· ⭐ ${p.rating} (${p.userRatingCount ?? 0})` : ""}
+            {p.primaryType ?? "מקום"}{" "}
+            {p.rating ? `· ⭐ ${p.rating} (${p.userRatingCount ?? 0})` : ""}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -117,6 +139,14 @@ export function PlaceCard({
           )}
         </div>
       </div>
+
+      {reportCounts && reportCounts.open > 0 && reportCounts.open >= reportCounts.closed && (
+        <div className="glass-badge-success mt-2 inline-flex text-xs font-semibold">
+          👨‍👩‍👧 {reportCounts.open === 1 ? "הורה דיווח/ה" : `${reportCounts.open} הורים דיווחו`} שהיה
+          פתוח בשבת
+          {reportCounts.lastOpenAt ? ` · ${daysAgoLabel(reportCounts.lastOpenAt)}` : ""}
+        </div>
+      )}
 
       {saturdayOpen && p.saturdayHours && (
         <div className="mt-2 text-xs text-muted-foreground">
@@ -176,21 +206,19 @@ export function PlaceCard({
         )}
         {p.environment && (
           <span className="glass-badge">
-            {p.environment === "ממוזג" ? "❄️ ממוזג" : p.environment === "פתוח" ? "🌳 בחוץ" : "🔀 משולב"}
+            {p.environment === "ממוזג"
+              ? "❄️ ממוזג"
+              : p.environment === "פתוח"
+                ? "🌳 בחוץ"
+                : "🔀 משולב"}
           </span>
         )}
         <span className="glass-badge">
           👶 {p.ageRange ? `גילאי ${p.ageRange.min}–${p.ageRange.max}` : "גילאים לא אומתו"}
         </span>
-        {p.stroller_accessible && (
-          <span className="glass-badge-success">♿ נגיש לעגלות</span>
-        )}
-        {p.changing_table && (
-          <span className="glass-badge-info">🍼 פינת החתלה</span>
-        )}
-        {p.easy_parking && (
-          <span className="glass-badge-info">🅿️ חניה נוחה</span>
-        )}
+        {p.stroller_accessible && <span className="glass-badge-success">♿ נגיש לעגלות</span>}
+        {p.changing_table && <span className="glass-badge-info">🍼 פינת החתלה</span>}
+        {p.easy_parking && <span className="glass-badge-info">🅿️ חניה נוחה</span>}
         {p.isSoftDemoted && (
           <span className="glass-badge-warning">⚠️ בדקו שעות אטרקציה פנימית (פעלטון/קולנוע)</span>
         )}
@@ -200,19 +228,29 @@ export function PlaceCard({
         <span>
           🕒 עודכן לאחרונה:{" "}
           {updatedAt
-            ? new Date(updatedAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })
+            ? new Date(updatedAt).toLocaleTimeString("he-IL", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
             : "לא ידוע"}
         </span>
-        <span>🔗 מקור: {isLocal ? "מסד המידע שלנו" : "Google Maps"}</span>
+        <span>
+          🔗 מקור: {isLocal ? "מסד המידע שלנו" : isCommunity ? "הצעת הורים (נבדקה)" : "Google Maps"}
+        </span>
         {!shabbatKnown && <span className="font-semibold">⚠️ מידע השבת לא אומת לאחרונה</span>}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2 text-xs">
-        <a href={p.mapsUri} target="_blank" rel="noopener noreferrer" className="glass-link glass-link-maps">
+        <a
+          href={p.mapsUri}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="glass-link glass-link-maps"
+        >
           🗺️ Google Maps
         </a>
         <a
-          href={`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`}
+          href={wazeUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="glass-link glass-link-waze"
@@ -220,7 +258,7 @@ export function PlaceCard({
           🧭 וויז
         </a>
         <a
-          href={`whatsapp://send?text=${encodeURIComponent(`חשבתי שניסע ל${p.name} בשבת! 🎈\nזה פתוח, ${p.environment === "ממוזג" ? "ממוזג" : "כיף"}, ונמצא במרחק של בערך ${dist ? driveMinutes(dist) : "?"} דקות נסיעה מאיתנו.\n\nלינק לוויז: https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`)}`}
+          href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
           target="_blank"
           rel="noopener noreferrer"
           className="glass-link"
@@ -235,7 +273,7 @@ export function PlaceCard({
         )}
       </div>
 
-      <CommunityReports placeId={p.id} placeName={p.name} />
+      <CommunityReports placeId={p.id} placeName={p.name} initialCounts={reportCounts} />
     </article>
   );
 }
