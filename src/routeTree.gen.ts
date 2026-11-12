@@ -9,16 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as IrCityRouteImport } from './routes/ir.$city'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as IrCityRouteImport } from './routes/ir.$city'
 
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -29,6 +24,11 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IrCityRoute = IrCityRouteImport.update({
   id: '/ir/$city',
   path: '/ir/$city',
@@ -37,45 +37,45 @@ const IrCityRoute = IrCityRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/ir/$city': typeof IrCityRoute
-  '/admin': typeof AdminRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/ir/$city': typeof IrCityRoute
-  '/admin': typeof AdminRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/ir/$city': typeof IrCityRoute
-  '/admin': typeof AdminRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sitemap.xml' | '/ir/$city' | '/admin'
+  fullPaths: '/' | '/admin' | '/sitemap.xml' | '/ir/$city'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sitemap.xml' | '/ir/$city' | '/admin'
-  id: '__root__' | '/' | '/sitemap.xml' | '/ir/$city' | '/admin'
+  to: '/' | '/admin' | '/sitemap.xml' | '/ir/$city'
+  id: '__root__' | '/' | '/admin' | '/sitemap.xml' | '/ir/$city'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   IrCityRoute: typeof IrCityRoute
-  AdminRoute: typeof AdminRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -85,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ir/$city': {
       id: '/ir/$city'
       path: '/ir/$city'
@@ -92,21 +99,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IrCityRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   IrCityRoute: IrCityRoute,
-  AdminRoute: AdminRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

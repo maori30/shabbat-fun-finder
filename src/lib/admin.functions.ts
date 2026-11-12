@@ -112,7 +112,9 @@ export const reviewSuggestion = createServerFn({ method: "POST" })
         if (error) throw error;
         return { ok: true, data: null };
       }
-      const patch: Record<string, unknown> = { is_approved: data.action === "approve" };
+      const patch: { is_approved: boolean; lat?: number; lng?: number; open_shabbat?: boolean } = {
+        is_approved: data.action === "approve",
+      };
       if (data.action === "approve") {
         // Without coordinates an approved place can never match a search.
         if (data.lat === null || data.lng === null) {
