@@ -83,7 +83,7 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
   const [reportCounts, setReportCounts] = useState<Record<string, ReportCounts>>({});
 
   // --- AI ---
-  const [vibe, setVibe] = useState(DEFAULT_PLAN.vibe);
+  const [vibes, setVibes] = useState<string[]>(DEFAULT_PLAN.vibes);
   const [ages, setAges] = useState(DEFAULT_PLAN.ages);
   const [drive, setDrive] = useState(DEFAULT_PLAN.drive);
   const [budget, setBudget] = useState(DEFAULT_PLAN.budget);
@@ -182,7 +182,7 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
     if (!promptOverride && needOrigin()) return;
     const prompt =
       promptOverride ??
-      buildPrompt({ vibe, ages, drive, budget, freeText, originLabel: origin?.label ?? null });
+      buildPrompt({ vibes, ages, drive, budget, freeText, originLabel: origin?.label ?? null });
     setAiLoading(true);
     setSavedOnly(false);
     setSearchError("");
@@ -193,7 +193,7 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
           prompt,
           fallbackOrigin: origin,
           // Deep links (?q=) carry only text; card searches send every choice.
-          hints: promptOverride ? null : buildHints({ vibe, ages, drive, budget }),
+          hints: promptOverride ? null : buildHints({ vibes, ages, drive, budget }),
         },
       });
       if (res.error) setAiError(res.error);
@@ -224,7 +224,7 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
     setSearchStartedAt(Date.now());
     try {
       const prompt = buildPrompt(
-        { vibe, ages, drive, budget, freeText, originLabel: origin?.label ?? null },
+        { vibes, ages, drive, budget, freeText, originLabel: origin?.label ?? null },
         "itinerary",
       );
       const res = await aiSearchFn({
@@ -233,7 +233,7 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
           fallbackOrigin: origin,
           mode: "itinerary",
           weather: weatherInfo?.description ?? null,
-          hints: buildHints({ vibe, ages, drive, budget }),
+          hints: buildHints({ vibes, ages, drive, budget }),
         },
       });
       if (res.error) setAiError(res.error);
@@ -669,8 +669,8 @@ export function Finder({ initialCity }: { initialCity?: string } = {}) {
           recentCitySearches={recentCitySearches}
           selectRecentCity={selectRecentCity}
           removeRecentCity={removeRecentCity}
-          vibe={vibe}
-          setVibe={setVibe}
+          vibes={vibes}
+          setVibes={setVibes}
           ages={ages}
           setAges={setAges}
           drive={drive}

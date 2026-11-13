@@ -72,7 +72,8 @@ export const BUDGETS = [
 export const DRIVES = [15, 30, 45, 60] as const;
 
 export type PlanChoices = {
-  vibe: string;
+  /** Selected vibe chip ids — any number. */
+  vibes: string[];
   ages: string;
   drive: number;
   budget: string;
@@ -81,7 +82,7 @@ export type PlanChoices = {
 };
 
 export const DEFAULT_PLAN: Omit<PlanChoices, "originLabel"> = {
-  vibe: "",
+  vibes: [],
   ages: "",
   drive: 30,
   budget: "any",
@@ -89,7 +90,7 @@ export const DEFAULT_PLAN: Omit<PlanChoices, "originLabel"> = {
 };
 
 export function buildPrompt(c: PlanChoices, mode: "search" | "itinerary" = "search"): string {
-  const vibe = VIBES.find((v) => v.id === c.vibe);
+  const vibes = VIBES.filter((v) => c.vibes.includes(v.id));
   const budget = BUDGETS.find((b) => b.id === c.budget);
   const parts = [
     mode === "itinerary"
@@ -99,7 +100,7 @@ export function buildPrompt(c: PlanChoices, mode: "search" | "itinerary" = "sear
     c.originLabel ? `יוצאים מ${c.originLabel}` : "",
     `עד ${c.drive} דקות נסיעה`,
     budget?.text ?? "",
-    vibe ? `בא לנו ${vibe.terms}` : "",
+    vibes.length > 0 ? `בא לנו ${vibes.map((v) => v.terms).join(" או ")}` : "",
     "חשוב שיהיה פתוח בשבת ומתאים למשפחה עם ילדים",
   ].filter(Boolean);
   const sentence = parts.join(", ") + ".";
@@ -112,7 +113,7 @@ export function buildPrompt(c: PlanChoices, mode: "search" | "itinerary" = "sear
  * card filters the search directly instead of relying on the AI to parse it.
  */
 export type SearchHints = {
-  /** Vibe chip id (for anonymous insights). */
+  /** First chosen vibe id (for anonymous insights). */
   vibe: string | null;
   keywords: string[];
   indoorPreference: "ממוזג" | "פתוח" | null;
@@ -129,11 +130,19 @@ export function parseAges(text: string): number[] {
 }
 
 export function buildHints(c: Omit<PlanChoices, "originLabel" | "freeText">): SearchHints {
-  const vibe = VIBES.find((v) => v.id === c.vibe);
+  const vibes = VIBES.filter((v) => c.vibes.includes(v.id));
+  // One vibe → both of its search terms; several → the main term of each
+  // (max 3, searched in parallel with the broad sweep).
+  const keywords =
+    vibes.length === 1 ? [...vibes[0]!.keywords] : vibes.map((v) => v.keywords[0]!).slice(0, 3);
+  // Filter indoor/outdoor only when every chosen vibe agrees (e.g. ממוזג +
+  // יצירה → indoor; ממוזג + טבע → no filter, so neither kind is dropped).
+  const envs = new Set(vibes.map((v) => v.env));
+  const indoorPreference = envs.size === 1 ? (vibes[0]?.env ?? null) : null;
   return {
-    vibe: vibe?.id ?? null,
-    keywords: vibe ? [...vibe.keywords] : [],
-    indoorPreference: vibe?.env ?? null,
+    vibe: vibes[0]?.id ?? null,
+    keywords,
+    indoorPreference,
     ages: parseAges(c.ages),
     maxDriveMinutes: c.drive,
     freeOnly: c.budget === "free",

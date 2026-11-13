@@ -70,7 +70,7 @@ export function cleanKeywords(keywords: string[]): string[] {
   return keywords
     .map((k) => k.trim())
     .filter((k) => k.length >= 2 && !NON_PLACE_KEYWORD.test(k))
-    .slice(0, 2);
+    .slice(0, 3);
 }
 
 /**
