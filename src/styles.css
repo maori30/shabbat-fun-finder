@@ -146,7 +146,27 @@
 
 
 
-/* ===== Liquid Glass v5 — Apple iOS 26-inspired: vivid, refractive, translucent ===== */
+/* ===== Liquid Glass v6 — "Shabbat afternoon": softer sky palette, thicker glass ===== */
+
+/* Brand tokens used by the glass primitives below. */
+:root {
+  --brand-a: oklch(0.66 0.13 200); /* lagoon teal */
+  --brand-b: oklch(0.6 0.17 285); /* dusk violet */
+  --warm-a: oklch(0.74 0.16 45); /* sunset coral */
+  --warm-b: oklch(0.66 0.19 10); /* rose */
+  --glass-fill: oklch(1 0 0 / 16%);
+  --glass-rim: oklch(1 0 0 / 90%);
+  --glass-shadow: oklch(0.3 0.06 270 / 22%);
+}
+.dark {
+  --brand-a: oklch(0.6 0.12 200);
+  --brand-b: oklch(0.56 0.16 285);
+  --warm-a: oklch(0.66 0.15 45);
+  --warm-b: oklch(0.58 0.17 10);
+  --glass-fill: oklch(0.9 0.02 260 / 7%);
+  --glass-rim: oklch(1 0 0 / 38%);
+  --glass-shadow: oklch(0 0 0 / 55%);
+}
 
 @keyframes liquid-drift {
   0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
@@ -168,8 +188,14 @@
 /* Vivid photographic-feeling background — the color that the glass refracts */
 body {
   position: relative;
-  background-color: oklch(0.55 0.18 250);
-  background-image: linear-gradient(160deg, oklch(0.5 0.24 265), oklch(0.42 0.26 305) 45%, oklch(0.48 0.24 210));
+  background-color: oklch(0.86 0.05 260);
+  background-image: linear-gradient(
+    165deg,
+    oklch(0.84 0.07 235),
+    oklch(0.83 0.08 295) 45%,
+    oklch(0.88 0.07 55)
+  );
+  background-attachment: fixed;
   overflow-x: hidden;
 }
 
@@ -181,26 +207,31 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background-image:
-    radial-gradient(circle at 15% 20%, oklch(0.72 0.24 320 / 90%), transparent 45%),
-    radial-gradient(circle at 85% 15%, oklch(0.72 0.22 210 / 90%), transparent 48%),
-    radial-gradient(circle at 70% 85%, oklch(0.68 0.24 30 / 85%), transparent 50%),
-    radial-gradient(circle at 25% 90%, oklch(0.7 0.23 160 / 85%), transparent 46%);
+    radial-gradient(circle at 15% 20%, oklch(0.8 0.12 300 / 70%), transparent 45%),
+    radial-gradient(circle at 85% 15%, oklch(0.8 0.11 200 / 70%), transparent 48%),
+    radial-gradient(circle at 70% 85%, oklch(0.84 0.12 50 / 70%), transparent 50%),
+    radial-gradient(circle at 25% 90%, oklch(0.82 0.1 170 / 60%), transparent 46%);
   animation: aurora-shift 32s ease-in-out infinite;
   will-change: transform;
   transform: translateZ(0);
 }
 
 .dark body {
-  background-color: oklch(0.18 0.06 270);
-  background-image: linear-gradient(160deg, oklch(0.2 0.08 265), oklch(0.15 0.1 300) 45%, oklch(0.18 0.09 220));
+  background-color: oklch(0.16 0.035 265);
+  background-image: linear-gradient(
+    165deg,
+    oklch(0.18 0.04 250),
+    oklch(0.14 0.05 285) 50%,
+    oklch(0.16 0.04 220)
+  );
 }
 
 .dark body::before {
   background-image:
-    radial-gradient(circle at 15% 20%, oklch(0.42 0.2 320 / 85%), transparent 45%),
-    radial-gradient(circle at 85% 15%, oklch(0.4 0.18 210 / 85%), transparent 48%),
-    radial-gradient(circle at 70% 85%, oklch(0.38 0.2 30 / 80%), transparent 50%),
-    radial-gradient(circle at 25% 90%, oklch(0.38 0.19 160 / 80%), transparent 46%);
+    radial-gradient(circle at 15% 20%, oklch(0.34 0.1 290 / 70%), transparent 45%),
+    radial-gradient(circle at 85% 15%, oklch(0.32 0.08 205 / 70%), transparent 48%),
+    radial-gradient(circle at 70% 85%, oklch(0.3 0.08 40 / 55%), transparent 50%),
+    radial-gradient(circle at 25% 90%, oklch(0.3 0.07 175 / 55%), transparent 46%);
 }
 
 /* Vivid drifting orbs that saturate the glass refraction.
@@ -219,28 +250,44 @@ body::before {
 }
 .liquid-orb.orb-a {
   width: 520px; height: 520px; top: -140px; left: -160px;
-  background: radial-gradient(circle closest-side, oklch(0.78 0.26 320 / 85%), oklch(0.78 0.26 320 / 30%) 55%, transparent 100%);
+  background: radial-gradient(circle closest-side, oklch(0.82 0.13 300 / 70%), oklch(0.82 0.13 300 / 24%) 55%, transparent 100%);
   animation-duration: 18s;
 }
 .liquid-orb.orb-b {
   width: 460px; height: 460px; top: 10%; right: -180px;
-  background: radial-gradient(circle closest-side, oklch(0.76 0.24 210 / 82%), oklch(0.76 0.24 210 / 28%) 55%, transparent 100%);
+  background: radial-gradient(circle closest-side, oklch(0.82 0.12 200 / 68%), oklch(0.82 0.12 200 / 22%) 55%, transparent 100%);
   animation-duration: 21s;
   animation-delay: -5s;
 }
 .liquid-orb.orb-c {
   width: 440px; height: 440px; bottom: -160px; left: 20%;
-  background: radial-gradient(circle closest-side, oklch(0.74 0.25 30 / 80%), oklch(0.74 0.25 30 / 26%) 55%, transparent 100%);
+  background: radial-gradient(circle closest-side, oklch(0.85 0.13 50 / 70%), oklch(0.85 0.13 50 / 22%) 55%, transparent 100%);
   animation-duration: 17s;
   animation-delay: -8s;
 }
 .liquid-orb.orb-d {
   width: 340px; height: 340px; top: 50%; left: 40%;
-  background: radial-gradient(circle closest-side, oklch(0.76 0.24 160 / 78%), oklch(0.76 0.24 160 / 24%) 55%, transparent 100%);
+  background: radial-gradient(circle closest-side, oklch(0.84 0.11 170 / 60%), oklch(0.84 0.11 170 / 18%) 55%, transparent 100%);
   animation-duration: 23s;
   animation-delay: -3s;
 }
 
+
+/* Dark mode: dim, low-chroma orbs (the bright ones showed through glass as
+   neon green/red patches). */
+.dark .liquid-orb { opacity: 0.55; }
+.dark .liquid-orb.orb-a {
+  background: radial-gradient(circle closest-side, oklch(0.42 0.12 290 / 70%), transparent 100%);
+}
+.dark .liquid-orb.orb-b {
+  background: radial-gradient(circle closest-side, oklch(0.42 0.1 205 / 70%), transparent 100%);
+}
+.dark .liquid-orb.orb-c {
+  background: radial-gradient(circle closest-side, oklch(0.4 0.09 40 / 55%), transparent 100%);
+}
+.dark .liquid-orb.orb-d {
+  background: radial-gradient(circle closest-side, oklch(0.4 0.08 175 / 50%), transparent 100%);
+}
 
 #root, main, header { position: relative; z-index: 1; }
 
@@ -249,24 +296,28 @@ body::before {
 .glass-card,
 .glass-btn,
 .glass-btn-primary,
+.glass-btn-accent,
 .glass-field,
 .glass-select,
 .glass-chip,
 .glass-empty {
   position: relative;
   isolation: isolate;
-  background-color: oklch(1 0 0 / 10%);
-  border: 1px solid oklch(1 0 0 / 40%);
-  border-top-color: oklch(1 0 0 / 88%);
-  border-left-color: oklch(1 0 0 / 55%);
-  border-bottom-color: oklch(1 0 0 / 22%);
-  backdrop-filter: blur(22px) saturate(180%);
+  background-color: var(--glass-fill);
+  border: 1px solid oklch(1 0 0 / 45%);
+  border-top-color: var(--glass-rim);
+  border-left-color: oklch(1 0 0 / 60%);
+  border-bottom-color: oklch(1 0 0 / 25%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%) brightness(1.04);
+  backdrop-filter: blur(26px) saturate(170%) brightness(1.04);
+  /* rim highlight on top, a soft "lens" glow along the bottom edge (glass
+     thickness), and a two-layer drop shadow */
   box-shadow:
-    0 1.5px 0 oklch(1 0 0 / 95%) inset,
-    0 -1px 0 oklch(1 0 0 / 18%) inset,
-    0 0 0 0.5px oklch(1 0 0 / 28%) inset,
-    0 20px 50px oklch(0.15 0.08 260 / 32%),
-    0 6px 16px oklch(0.15 0.08 260 / 20%);
+    0 1.5px 0 var(--glass-rim) inset,
+    0 -10px 18px -12px oklch(1 0 0 / 55%) inset,
+    0 0 0 0.5px oklch(1 0 0 / 30%) inset,
+    0 18px 44px var(--glass-shadow),
+    0 4px 12px oklch(0.3 0.06 270 / 14%);
   transition: background-color 220ms ease, box-shadow 220ms ease, transform 220ms ease, border-color 220ms ease;
   overflow: hidden;
 }
@@ -279,14 +330,16 @@ body::before {
 .dark .glass-select,
 .dark .glass-chip,
 .dark .glass-empty {
-  background-color: oklch(1 0 0 / 8%);
-  border-color: oklch(1 0 0 / 22%);
-  border-top-color: oklch(1 0 0 / 45%);
-  border-left-color: oklch(1 0 0 / 30%);
+  background-color: var(--glass-fill);
+  border-color: oklch(1 0 0 / 14%);
+  border-top-color: var(--glass-rim);
+  border-left-color: oklch(1 0 0 / 22%);
+  border-bottom-color: oklch(1 0 0 / 8%);
   box-shadow:
-    0 1.5px 0 oklch(1 0 0 / 35%) inset,
-    0 -1px 0 oklch(0 0 0 / 25%) inset,
-    0 20px 50px oklch(0 0 0 / 55%);
+    0 1.5px 0 var(--glass-rim) inset,
+    0 -10px 18px -12px oklch(0.75 0.08 220 / 30%) inset,
+    0 0 0 0.5px oklch(1 0 0 / 10%) inset,
+    0 20px 50px var(--glass-shadow);
 }
 
 /* Inner refraction highlight — top-left specular */
@@ -294,6 +347,7 @@ body::before {
 .glass-card::before,
 .glass-btn::before,
 .glass-btn-primary::before,
+.glass-btn-accent::before,
 .glass-field::before,
 .glass-select::before,
 .glass-chip::before {
@@ -343,7 +397,7 @@ body::before {
 
 
 .glass-panel > *, .glass-card > *,
-.glass-btn > *, .glass-btn-primary > *,
+.glass-btn > *, .glass-btn-primary > *, .glass-btn-accent > *,
 .glass-field > *, .glass-select > *, .glass-chip > * { position: relative; z-index: 1; }
 
 /* Header — vivid tinted glass with strong top rim highlight */
@@ -351,7 +405,12 @@ body::before {
   position: relative;
   isolation: isolate;
   background-image:
-    linear-gradient(135deg, oklch(0.5 0.22 262 / 45%), oklch(0.5 0.22 210 / 42%) 50%, oklch(0.55 0.24 320 / 45%));
+    linear-gradient(
+      135deg,
+      oklch(0.58 0.15 205 / 88%),
+      oklch(0.53 0.18 275 / 86%) 55%,
+      oklch(0.64 0.18 345 / 80%)
+    );
   backdrop-filter: blur(30px) saturate(220%) brightness(1.1);
   border-bottom: 1px solid oklch(1 0 0 / 35%);
   box-shadow:
@@ -379,6 +438,15 @@ body::before {
   pointer-events: none;
   z-index: 0;
 }
+.dark .glass-header {
+  background-image: linear-gradient(
+    135deg,
+    oklch(0.32 0.08 215 / 80%),
+    oklch(0.28 0.1 275 / 80%) 55%,
+    oklch(0.32 0.1 330 / 72%)
+  );
+  border-bottom-color: oklch(1 0 0 / 18%);
+}
 .glass-header > * { position: relative; z-index: 1; }
 .glass-header h1,
 .glass-header p {
@@ -397,14 +465,28 @@ body::before {
 }
 .dark .glass-btn:hover { background-color: oklch(1 0 0 / 10%); }
 
-.glass-btn-primary {
-  background-image: linear-gradient(160deg, oklch(0.68 0.22 258 / 92%), oklch(0.55 0.24 305 / 88%));
+.glass-btn-primary,
+.glass-btn-accent {
+  background-image: linear-gradient(150deg, var(--brand-a), var(--brand-b));
   border-color: oklch(1 0 0 / 55%);
   color: white;
+  text-shadow: 0 1px 2px oklch(0.2 0.08 280 / 45%);
+  cursor: pointer;
 }
-.glass-btn-primary:hover {
-  background-image: linear-gradient(160deg, oklch(0.72 0.22 258 / 96%), oklch(0.6 0.24 305 / 94%));
+.glass-btn-accent {
+  background-image: linear-gradient(150deg, var(--warm-a), var(--warm-b));
+}
+.glass-btn-primary:hover,
+.glass-btn-accent:hover {
+  filter: brightness(1.07) saturate(1.05);
   transform: translateY(-2px) scale(1.015);
+}
+.glass-btn-primary:disabled,
+.glass-btn-accent:disabled,
+.glass-btn:disabled {
+  transform: none;
+  filter: grayscale(0.25);
+  cursor: not-allowed;
 }
 
 .glass-field,
@@ -432,10 +514,10 @@ body::before {
 .glass-field:focus,
 .glass-select:focus {
   outline: none;
-  border-color: oklch(0.7 0.2 258 / 75%);
+  border-color: var(--brand-a);
   box-shadow:
-    0 1.5px 0 oklch(1 0 0 / 95%) inset,
-    0 0 0 4px oklch(0.7 0.2 258 / 30%);
+    0 1.5px 0 var(--glass-rim) inset,
+    0 0 0 4px oklch(0.66 0.13 200 / 30%);
 }
 
 .glass-chip { background-color: oklch(1 0 0 / 30%); }
@@ -531,7 +613,7 @@ body::before {
   transition: transform 180ms ease, background-color 180ms ease;
 }
 .glass-link:hover { transform: translateY(-1px); background-color: oklch(1 0 0 / 32%); }
-.glass-link-maps { background-image: linear-gradient(160deg, oklch(0.68 0.2 258 / 90%), oklch(0.58 0.22 240 / 85%)); color: white; border-color: oklch(1 0 0 / 55%); }
+.glass-link-maps { background-image: linear-gradient(160deg, oklch(0.62 0.15 255 / 92%), oklch(0.54 0.16 270 / 88%)); color: white; border-color: oklch(1 0 0 / 55%); }
 .glass-link-waze { background-image: linear-gradient(160deg, oklch(0.72 0.18 220 / 90%), oklch(0.6 0.2 210 / 85%)); color: white; border-color: oklch(1 0 0 / 55%); }
 .dark .glass-link { color: oklch(0.98 0.01 240); background-color: oklch(1 0 0 / 12%); border-color: oklch(1 0 0 / 28%); box-shadow: 0 1px 0 oklch(1 0 0 / 20%) inset, 0 6px 16px oklch(0 0 0 / 50%); }
 .dark .glass-link-maps { background-image: linear-gradient(160deg, oklch(0.52 0.2 258 / 92%), oklch(0.42 0.2 240 / 88%)); color: white; border-color: oklch(0.72 0.18 258 / 55%); }
@@ -594,6 +676,64 @@ body::before {
 .dark .text-foreground\/80,
 .dark .text-muted-foreground\/70 {
   color: oklch(0.88 0.02 250);
+}
+
+/* Dialogs (e.g. "suggest a place") — were flat white/black sheets. */
+.glass-dialog {
+  background-color: oklch(1 0 0 / 62%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  backdrop-filter: blur(30px) saturate(170%);
+  border: 1px solid oklch(1 0 0 / 60%) !important;
+  border-top-color: var(--glass-rim) !important;
+  border-radius: 1.75rem !important;
+  box-shadow:
+    0 1.5px 0 var(--glass-rim) inset,
+    0 30px 80px oklch(0.25 0.08 270 / 35%) !important;
+}
+.dark .glass-dialog {
+  background-color: oklch(0.2 0.04 270 / 72%) !important;
+  border-color: oklch(1 0 0 / 16%) !important;
+  border-top-color: var(--glass-rim) !important;
+  box-shadow:
+    0 1.5px 0 var(--glass-rim) inset,
+    0 30px 80px oklch(0 0 0 / 65%) !important;
+}
+.glass-dialog input,
+.glass-dialog textarea,
+.glass-dialog select {
+  background-color: oklch(1 0 0 / 55%);
+  border-color: oklch(1 0 0 / 70%);
+  border-radius: 0.85rem;
+}
+.dark .glass-dialog input,
+.dark .glass-dialog textarea,
+.dark .glass-dialog select {
+  background-color: oklch(1 0 0 / 8%);
+  border-color: oklch(1 0 0 / 18%);
+  color: oklch(0.98 0.01 240);
+}
+/* Dimmed + blurred backdrop behind dialogs */
+[data-slot="dialog-overlay"],
+.glass-dialog-overlay {
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* Toasts */
+[data-sonner-toast] {
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  backdrop-filter: blur(24px) saturate(170%);
+  border-radius: 1.1rem !important;
+}
+
+/* Clear keyboard focus on every glass control (both themes) */
+.glass-btn:focus-visible,
+.glass-btn-primary:focus-visible,
+.glass-btn-accent:focus-visible,
+.glass-link:focus-visible,
+.glass-chip:focus-within {
+  outline: 3px solid oklch(0.7 0.13 200 / 80%);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

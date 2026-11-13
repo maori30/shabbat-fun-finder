@@ -292,7 +292,7 @@ export function PlanPanel(props: {
           type="button"
           onClick={p.onBuild}
           disabled={busy}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-500 px-6 py-3 text-base font-bold text-white shadow-md hover:from-purple-600 hover:to-indigo-600 disabled:opacity-70"
+          className="glass-btn-accent inline-flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3 text-base font-bold disabled:opacity-70"
         >
           {p.itineraryLoading ? (
             <>
