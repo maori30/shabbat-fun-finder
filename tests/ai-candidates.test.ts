@@ -53,9 +53,10 @@ const indoorToddlers: CandidateCriteria = {
 test("descriptive keywords are dropped; real place types are kept", () => {
   assert.deepEqual(cleanKeywords(["מקום ממוזג", "פעילות לילדים", "בשבת"]), []);
   assert.deepEqual(cleanKeywords(["משחקייה", "ממוזג"]), ["משחקייה"]);
-  assert.deepEqual(cleanKeywords(["פארק טרמפולינות", "מוזיאון ילדים", "באולינג"]), [
+  assert.deepEqual(cleanKeywords(["פארק טרמפולינות", "מוזיאון ילדים", "באולינג", "קארטינג"]), [
     "פארק טרמפולינות",
     "מוזיאון ילדים",
+    "באולינג",
   ]);
 });
 
@@ -138,4 +139,13 @@ test("places matching the parent's vibe rank higher", () => {
   const c = { ...indoorToddlers, indoorPreference: "לא משנה" as const, ages: [] };
   const out = selectCandidates([a, b], c, PETAH_TIKVA, 37, 1, new Set([b.id]));
   assert.equal(out[0]!.name, "פארק מים");
+});
+
+test("multi-vibe search: broad sweep + one query per vibe, capped at 4", () => {
+  const q = planQueries({
+    ...indoorToddlers,
+    indoorPreference: "לא משנה",
+    keywords: ["פארק מים", "פינת חי", "פארק טרמפולינות"],
+  });
+  assert.deepEqual(q, ["", "פארק מים", "פינת חי", "פארק טרמפולינות"]);
 });

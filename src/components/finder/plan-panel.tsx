@@ -24,8 +24,8 @@ export function PlanPanel(props: {
   selectRecentCity: (item: RecentCity) => void;
   removeRecentCity: (cityName: string) => void;
   // choices
-  vibe: string;
-  setVibe: (v: string) => void;
+  vibes: string[];
+  setVibes: (v: string[]) => void;
   ages: string;
   setAges: (v: string) => void;
   drive: number;
@@ -186,17 +186,26 @@ export function PlanPanel(props: {
           <span className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
             2
           </span>
-          מה בא לכם? <span className="font-normal text-muted-foreground">(לא חובה)</span>
+          מה בא לכם?{" "}
+          <span className="font-normal text-muted-foreground">
+            {p.vibes.length > 0
+              ? `(${p.vibes.length} נבחרו · אפשר לבחור כמה)`
+              : "(לא חובה · אפשר לבחור כמה)"}
+          </span>
         </div>
         <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
           {VIBES.map((v) => (
             <button
               key={v.id}
               type="button"
-              onClick={() => p.setVibe(p.vibe === v.id ? "" : v.id)}
-              aria-pressed={p.vibe === v.id}
+              onClick={() =>
+                p.setVibes(
+                  p.vibes.includes(v.id) ? p.vibes.filter((x) => x !== v.id) : [...p.vibes, v.id],
+                )
+              }
+              aria-pressed={p.vibes.includes(v.id)}
               className={`rounded-2xl px-2 py-2.5 text-sm font-bold transition-transform active:scale-95 ${
-                p.vibe === v.id ? "glass-btn-primary ring-2 ring-primary/60" : "glass-btn"
+                p.vibes.includes(v.id) ? "glass-btn-primary ring-2 ring-primary/60" : "glass-btn"
               }`}
             >
               <span className="block text-xl">{v.emoji}</span>
